@@ -9,6 +9,9 @@ build/
 *.log
 .vercel
 .turbo
+coverage/
+.vitest/
+supabase/.temp/
 *.tsbuildinfo
 next-env.d.ts
 
