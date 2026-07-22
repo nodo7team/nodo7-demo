@@ -1,0 +1,294 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── MODERN GLASS THEME ── */
+    --bg:           220 14% 96%;
+    --bg-elevated:  0 0% 100%;
+    --bg-muted:     220 13% 94%;
+    --bg-panel:     0 0% 100%;
+
+    --fg:           220 20% 14%;
+    --fg-muted:     220 10% 42%;
+    --fg-subtle:    220 10% 58%;
+
+    --accent:       199 89% 48%;        /* ClickTV celeste */
+    --accent-fg:    0 0% 100%;
+    --accent-raptor: 160 84% 39%;       /* Raptor verde */
+
+    --border:       220 13% 88%;
+    --border-glow:  199 89% 48%;
+
+    --success:      142 76% 36%;
+    --warning:      38 92% 50%;
+    --danger:       0 84% 60%;
+    --info:         199 89% 48%;
+
+    --success-bg:   142 76% 95%;
+    --warning-bg:   38 92% 95%;
+    --danger-bg:    0 84% 95%;
+    --info-bg:      199 89% 95%;
+
+    --success-subtle: 142 76% 36%;
+    --warning-subtle: 38 92% 50%;
+    --danger-subtle:  0 84% 60%;
+    --info-subtle:    199 89% 48%;
+
+    --radius:       1rem;
+
+    /* Platform scales */
+    --clicktv-50:   199 89% 96%;
+    --clicktv-100:  199 89% 92%;
+    --clicktv-200:  199 89% 82%;
+    --clicktv-500:  199 89% 48%;
+    --clicktv-600:  199 89% 40%;
+    --clicktv-700:  199 89% 32%;
+
+    --raptor-50:    160 84% 96%;
+    --raptor-100:   160 84% 92%;
+    --raptor-200:   160 84% 82%;
+    --raptor-500:   160 84% 39%;
+    --raptor-600:   160 84% 33%;
+    --raptor-700:   160 84% 27%;
+  }
+
+  .dark {
+    --bg:           222 25% 6%;
+    --bg-elevated:  222 20% 10%;
+    --bg-muted:     222 17% 14%;
+    --bg-panel:     222 24% 7%;
+
+    --fg:           220 18% 95%;
+    --fg-muted:     220 12% 58%;
+    --fg-subtle:    220 12% 40%;
+
+    --border:       222 16% 17%;
+    --border-glow:  199 89% 48%;
+
+    --success-bg:   142 70% 9%;
+    --warning-bg:   38 90% 9%;
+    --danger-bg:    0 70% 9%;
+    --info-bg:      199 80% 9%;
+
+    --success-subtle: 142 72% 62%;
+    --warning-subtle: 38 92% 64%;
+    --danger-subtle:  0 82% 68%;
+    --info-subtle:    199 87% 64%;
+
+    --clicktv-50:   199 80% 10%;
+    --clicktv-100:  199 80% 15%;
+    --clicktv-200:  199 80% 22%;
+
+    --raptor-50:    160 70% 8%;
+    --raptor-100:   160 70% 13%;
+    --raptor-200:   160 70% 19%;
+  }
+
+  * { border-color: hsl(var(--border)); }
+
+  html, body {
+    background-color: hsl(var(--bg));
+    color: hsl(var(--fg));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 100% 60% at 50% -10%, hsl(220 50% 95% / 0.8) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 85% 105%, hsl(var(--accent) / 0.05) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(ellipse 90% 55% at 50% -10%, hsl(222 45% 15% / 0.85) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 88% 110%, hsl(var(--accent) / 0.08) 0%, transparent 50%);
+  }
+
+  ::selection {
+    background-color: hsl(var(--accent) / 0.2);
+    color: hsl(var(--fg));
+  }
+
+  ::-webkit-scrollbar       { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 100px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--fg-subtle) / 0.7); }
+}
+
+@layer components {
+  /* ── Glass card ── */
+  .card {
+    @apply bg-bg-elevated rounded-2xl border border-border;
+    box-shadow:
+      inset 0 1px 0 hsl(var(--fg) / 0.04),
+      0 1px 2px hsl(0 0% 0% / 0.06),
+      0 4px 16px -4px hsl(0 0% 0% / 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card:hover {
+    box-shadow:
+      inset 0 1px 0 hsl(var(--fg) / 0.05),
+      0 4px 16px hsl(0 0% 0% / 0.1),
+      0 8px 32px -4px hsl(var(--accent) / 0.18);
+    transform: translateY(-2px);
+  }
+
+  /* ── Soft card (subtle) ── */
+  .card-soft {
+    @apply bg-bg-muted rounded-2xl border border-border;
+    box-shadow: 0 1px 3px hsl(var(--fg) / 0.04);
+  }
+
+  /* ── Pill badge ── */
+  .pill {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white;
+    background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(199 100% 38%) 100%);
+    box-shadow: 0 4px 14px -3px hsl(var(--accent) / 0.4), inset 0 1px 0 hsl(0 0% 100% / 0.15);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px -4px hsl(var(--accent) / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+  }
+  .btn-primary:active { transform: translateY(0) scale(0.98); }
+
+  .btn-raptor {
+    @apply btn text-white;
+    background: linear-gradient(135deg, hsl(var(--accent-raptor)) 0%, hsl(160 90% 31%) 100%);
+    box-shadow: 0 4px 14px -3px hsl(var(--accent-raptor) / 0.4), inset 0 1px 0 hsl(0 0% 100% / 0.15);
+  }
+  .btn-raptor:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px -4px hsl(var(--accent-raptor) / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+  }
+
+  .btn-secondary {
+    @apply btn bg-bg-elevated text-fg border border-border;
+    box-shadow: inset 0 1px 0 hsl(var(--fg) / 0.04), 0 1px 2px hsl(0 0% 0% / 0.06);
+  }
+  .btn-secondary:hover {
+    background: hsl(var(--bg-muted));
+    border-color: hsl(var(--fg-subtle) / 0.5);
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-fg-muted;
+  }
+  .btn-ghost:hover {
+    @apply text-fg bg-bg-muted;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger/10 text-danger border border-danger/20;
+  }
+  .btn-danger:hover {
+    background: hsl(var(--danger) / 0.15);
+    border-color: hsl(var(--danger) / 0.3);
+  }
+
+  .btn-sm  { @apply h-9 px-3.5 text-xs; }
+  .btn-md  { @apply h-11 px-5 text-sm; }
+  .btn-lg  { @apply h-12 px-6 text-base; }
+
+  /* ── Input ── */
+  .input {
+    @apply w-full rounded-xl bg-bg-elevated border border-border px-4 py-2.5 text-sm
+           placeholder:text-fg-subtle
+           focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40
+           transition-all;
+    box-shadow: 0 1px 2px hsl(var(--fg) / 0.03);
+  }
+
+  /* ── Label ── */
+  .label {
+    @apply block text-xs font-semibold text-fg-muted mb-2;
+  }
+
+  /* ── Section header ── */
+  .section-eyebrow {
+    @apply text-xs font-bold text-fg-subtle uppercase tracking-wider;
+  }
+
+  /* ── Service card (for lines) ── */
+  .service-card {
+    @apply bg-bg-elevated rounded-2xl border border-border p-5;
+    box-shadow: inset 0 1px 0 hsl(var(--fg) / 0.04), 0 1px 2px hsl(0 0% 0% / 0.06), 0 4px 16px -4px hsl(0 0% 0% / 0.08);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .service-card:hover {
+    box-shadow: inset 0 1px 0 hsl(var(--fg) / 0.05), 0 4px 16px hsl(0 0% 0% / 0.1), 0 8px 32px -4px hsl(var(--accent) / 0.16);
+    transform: translateY(-2px);
+  }
+
+  /* ── KPI card ── */
+  .kpi-card {
+    @apply bg-bg-elevated rounded-2xl border border-border p-6 relative overflow-hidden;
+    box-shadow: inset 0 1px 0 hsl(var(--fg) / 0.04), 0 1px 2px hsl(0 0% 0% / 0.06);
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  /* ── Animations ── */
+  .animate-fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .animate-pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
+  }
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.5; }
+  }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+
+  /* ── Platform colors ── */
+  .bg-clicktv { background: linear-gradient(135deg, hsl(var(--clicktv-500)) 0%, hsl(var(--clicktv-600)) 100%); }
+  .bg-raptor  { background: linear-gradient(135deg, hsl(var(--raptor-500)) 0%, hsl(var(--raptor-600)) 100%); }
+  .text-clicktv { color: hsl(var(--clicktv-500)); }
+  .text-raptor  { color: hsl(var(--raptor-500)); }
+}

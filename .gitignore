@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+build/
+.env
+.env.local
+.env*.local
+.DS_Store
+*.log
+.vercel
+.turbo
+*.tsbuildinfo
+next-env.d.ts
+
+# Google credentials key
+our-card-455617-g6-75877b4aec05.json
+
