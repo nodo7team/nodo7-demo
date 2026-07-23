@@ -46,7 +46,7 @@ export function LoginForm() {
         setPin('');
         return;
       }
-      router.push('/dashboard');
+      router.push('/demos');
       router.refresh();
     } catch (e: any) {
       setError(e?.message || 'Error de conexión');

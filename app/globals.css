@@ -543,3 +543,89 @@
   .n7-primary-button,
   .n7-secondary-button { transition: none; }
 }
+
+.n7-admin-shell,
+.n7-login-page {
+  min-height: 100svh;
+  color: #12251a;
+  background: #edf3e5;
+}
+.n7-admin-header {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 74px;
+  padding: 0.75rem clamp(1rem, 4vw, 3.5rem);
+  background: rgb(251 253 247 / 0.94);
+  border-bottom: 1px solid #c6d2bd;
+  backdrop-filter: blur(12px);
+}
+.n7-admin-header > a img { width: 170px; height: auto; }
+.n7-admin-header nav,
+.n7-admin-header nav a,
+.n7-admin-header nav button { display: flex; align-items: center; gap: 0.65rem; }
+.n7-admin-header nav { gap: 1rem; }
+.n7-admin-header nav a,
+.n7-admin-header nav button { color: #36513c; background: transparent; border: 0; font-size: 0.75rem; font-weight: 800; cursor: pointer; }
+.n7-admin-page { width: min(1500px, 100%); margin: 0 auto; padding: clamp(2rem, 5vw, 4.5rem) clamp(1rem, 4vw, 3.5rem); }
+.n7-admin-title p,
+.n7-admin-generator > div > span,
+.n7-admin-table-wrap > header p { margin: 0; color: #66804f; font: 700 0.62rem var(--font-mono), monospace; letter-spacing: 0.14em; }
+.n7-admin-title h1 { margin: 0.2rem 0; font: 800 clamp(2.8rem, 6vw, 5.3rem)/0.95 var(--font-display), sans-serif; text-transform: uppercase; }
+.n7-admin-title > span { color: #627064; font-size: 0.85rem; }
+.n7-admin-console { display: grid; gap: 1.4rem; margin-top: 2rem; }
+.n7-admin-generator { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; padding: clamp(1.2rem, 3vw, 2rem); color: #eef7e8; background: #142f20; box-shadow: 8px 8px 0 #a5e834; }
+.n7-admin-generator h2 { margin: 0.35rem 0; font: 800 1.65rem var(--font-display), sans-serif; text-transform: uppercase; }
+.n7-admin-generator p { margin: 0; color: #b9c9bb; font-size: 0.78rem; }
+.n7-admin-generator > div > span { display: inline-flex; gap: 0.45rem; align-items: center; color: #bde868; }
+.n7-admin-primary { align-self: center; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0.75rem 1rem; color: #17321e; background: #cfff6f; border: 0; font-weight: 900; cursor: pointer; }
+.n7-admin-new-code { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; color: #17321e; background: #efffd1; }
+.n7-admin-new-code > div { display: grid; gap: 0.35rem; min-width: 0; }
+.n7-admin-new-code small { color: #647458; font: 600 0.58rem var(--font-mono), monospace; }
+.n7-admin-new-code strong { overflow-wrap: anywhere; font: 700 0.98rem var(--font-mono), monospace; }
+.n7-admin-new-code button { display: flex; align-items: center; gap: 0.45rem; flex: 0 0 auto; padding: 0.65rem 0.8rem; color: #e6ffae; background: #17341f; border: 0; font-weight: 800; cursor: pointer; }
+.n7-admin-error { margin: 0; padding: 0.85rem 1rem; color: #83251f; background: #fff0ed; border-left: 3px solid #c34238; }
+.n7-admin-filters { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.n7-admin-filters button { padding: 0.55rem 0.8rem; color: #526254; background: #f8faf4; border: 1px solid #c3d0bb; font-size: 0.7rem; font-weight: 800; cursor: pointer; }
+.n7-admin-filters button[data-selected="true"] { color: #18321f; background: #dcff85; border-color: #78a836; }
+.n7-admin-table-wrap { overflow: hidden; background: #fbfdf7; border: 1px solid #c4d0bd; }
+.n7-admin-table-wrap > header { display: flex; align-items: center; justify-content: space-between; padding: 1.2rem 1.4rem; border-bottom: 1px solid #d3dccd; }
+.n7-admin-table-wrap > header h2 { margin: 0.15rem 0 0; font: 800 1.45rem var(--font-display), sans-serif; text-transform: uppercase; }
+.n7-admin-table-wrap > header button { display: flex; align-items: center; gap: 0.45rem; color: #34513a; background: transparent; border: 0; font-size: 0.7rem; font-weight: 800; cursor: pointer; }
+.n7-admin-table-scroll { overflow-x: auto; }
+.n7-admin-table-wrap table { width: 100%; min-width: 1060px; border-collapse: collapse; }
+.n7-admin-table-wrap th { padding: 0.75rem 1rem; color: #778276; background: #f0f4ec; font: 700 0.58rem var(--font-mono), monospace; letter-spacing: 0.08em; text-align: left; }
+.n7-admin-table-wrap td { padding: 1rem; border-top: 1px solid #e0e6dc; font-size: 0.72rem; vertical-align: middle; }
+.n7-admin-table-wrap td > strong,
+.n7-admin-table-wrap td > small { display: block; }
+.n7-admin-table-wrap td > small { margin-top: 0.25rem; color: #788278; font-size: 0.62rem; }
+.n7-admin-status { display: inline-flex; padding: 0.3rem 0.5rem; color: #4f5e50; background: #e9eee6; font-size: 0.62rem; font-weight: 800; }
+.n7-admin-status[data-status="active"], .n7-admin-status[data-status="used"] { color: #244b14; background: #dcf6b2; }
+.n7-admin-status[data-status="expired"], .n7-admin-status[data-status="revoked"] { color: #712f2a; background: #f8ddd8; }
+.n7-admin-danger,
+.n7-admin-action { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.48rem 0.6rem; border: 0; font-size: 0.64rem; font-weight: 800; cursor: pointer; }
+.n7-admin-danger { color: #7e2823; background: #fbe4df; }
+.n7-admin-action { color: #294818; background: #e2f4bf; }
+.n7-admin-empty { padding: 4rem 1rem; color: #738073; text-align: center; }
+
+.n7-login-page { display: grid; place-items: center; padding: 1.5rem; background: radial-gradient(circle at top, #dfff92, transparent 38%), #edf3e5; }
+.n7-login-page > section { width: min(100%, 380px); padding: 2rem; text-align: center; background: #fbfdf7; border: 1px solid #becdb5; box-shadow: 8px 8px 0 #a5e834; }
+.n7-login-page img { width: 250px; height: auto; margin: 0 auto 1.5rem; }
+.n7-login-page > section > p { margin: 0; color: #698050; font: 700 0.62rem var(--font-mono), monospace; letter-spacing: 0.14em; }
+.n7-login-page h1 { margin: 0.35rem 0; color: #142b1d; font: 800 2.2rem var(--font-display), sans-serif; text-transform: uppercase; }
+.n7-login-page > section > span { display: block; margin-bottom: 1.5rem; color: #667266; font-size: 0.72rem; }
+
+@media (max-width: 720px) {
+  .n7-admin-header { align-items: flex-start; }
+  .n7-admin-header > a img { width: 130px; }
+  .n7-admin-header nav { gap: 0.55rem; }
+  .n7-admin-header nav a,
+  .n7-admin-header nav button { font-size: 0.65rem; }
+  .n7-admin-generator { grid-template-columns: 1fr; }
+  .n7-admin-primary { justify-content: center; width: 100%; }
+  .n7-admin-new-code { align-items: stretch; flex-direction: column; }
+  .n7-admin-new-code button { justify-content: center; }
+}
