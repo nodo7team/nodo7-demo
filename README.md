@@ -47,7 +47,7 @@ npm.cmd run dev
 ## Supabase sin Docker
 
 1. Crea un proyecto nuevo en la cuenta de NODO7.
-2. En el SQL Editor, ejecuta `supabase/migrations/20260722000000_nodo7_demo_access.sql`.
+2. En el SQL Editor, ejecuta `supabase/migrations/0001_nodo7_demo_access.sql`.
 3. Copia la URL del proyecto a `NEXT_PUBLIC_SUPABASE_URL`.
 4. Copia la clave `service_role` a `SUPABASE_SERVICE_ROLE_KEY` únicamente en `.env.local` y en las variables privadas de Vercel.
 
