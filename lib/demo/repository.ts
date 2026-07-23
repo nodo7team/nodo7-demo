@@ -226,6 +226,107 @@ export class SupabaseDemoRepository implements DemoRepository {
     return typeof data === "number" ? data : null;
   }
 
+  async getOrCreateRequest(input: {
+    accessCodeId: string;
+    name: string;
+    packageId: DemoPackageId;
+  }): Promise<{ record: DemoRequestRecord; created: boolean }> {
+    const inserted = await this.client
+      .from("demo_requests")
+      .insert({
+        access_code_id: input.accessCodeId,
+        name: input.name,
+        package_id: input.packageId,
+      })
+      .select("*")
+      .maybeSingle();
+    if (!inserted.error && inserted.data) {
+      return { record: mapRequest(inserted.data)!, created: true };
+    }
+    if (inserted.error?.code !== "23505") throw inserted.error;
+
+    const existing = await this.client
+      .from("demo_requests")
+      .select("*")
+      .eq("access_code_id", input.accessCodeId)
+      .single();
+    if (existing.error) throw existing.error;
+    return { record: mapRequest(existing.data)!, created: false };
+  }
+
+  async prepareRequestRetry(
+    requestId: string,
+  ): Promise<DemoRequestRecord | null> {
+    const current = await this.client
+      .from("demo_requests")
+      .select("*")
+      .eq("id", requestId)
+      .maybeSingle();
+    if (current.error) throw current.error;
+    if (
+      !current.data ||
+      current.data.status !== "error" ||
+      current.data.attempt_count >= 3
+    ) {
+      return null;
+    }
+
+    const updated = await this.client
+      .from("demo_requests")
+      .update({
+        status: "creating",
+        attempt_count: current.data.attempt_count + 1,
+        error_code: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", requestId)
+      .eq("status", "error")
+      .eq("attempt_count", current.data.attempt_count)
+      .select("*")
+      .maybeSingle();
+    if (updated.error) throw updated.error;
+    return mapRequest(updated.data);
+  }
+
+  async completeGeneration(input: {
+    sessionHash: string;
+    requestId: string;
+    externalId: string;
+    username: string;
+    password: EncryptedCredential;
+    expiresAt: string | null;
+  }): Promise<boolean> {
+    const { data, error } = await this.client.rpc("complete_demo_generation", {
+      p_session_hash: input.sessionHash,
+      p_request_id: input.requestId,
+      p_external_id: input.externalId,
+      p_username: input.username,
+      p_password_ciphertext: input.password.ciphertext,
+      p_password_iv: input.password.iv,
+      p_password_tag: input.password.tag,
+      p_expires_at: input.expiresAt,
+    });
+    if (error) throw error;
+    return data === true;
+  }
+
+  async markRequestFailure(input: {
+    requestId: string;
+    status: "error" | "ambiguous";
+    errorCode: string;
+  }): Promise<void> {
+    const { error } = await this.client
+      .from("demo_requests")
+      .update({
+        status: input.status,
+        error_code: input.errorCode,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.requestId)
+      .eq("status", "creating");
+    if (error) throw error;
+  }
+
   async listCodes(filters: AdminCodeFilters): Promise<AccessCodeWithRequest[]> {
     let query = this.client
       .from("demo_access_codes")
@@ -266,6 +367,6 @@ export class SupabaseDemoRepository implements DemoRepository {
   }
 }
 
-export function createSupabaseDemoRepository(): DemoRepository {
+export function createSupabaseDemoRepository(): SupabaseDemoRepository {
   return new SupabaseDemoRepository();
 }

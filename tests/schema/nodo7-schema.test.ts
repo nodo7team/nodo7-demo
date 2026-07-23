@@ -29,4 +29,11 @@ describe("NODO7 schema", () => {
     expect(sql).toContain("grant execute on function activate_demo_code");
     expect(sql).toContain("to service_role");
   });
+
+  it("completes a provider result and consumes its code in one transaction", () => {
+    expect(sql).toContain("provider_external_id text");
+    expect(sql).toContain("create or replace function complete_demo_generation");
+    expect(sql).toContain("set status = 'used'");
+    expect(sql).toContain("set status = 'ok'");
+  });
 });

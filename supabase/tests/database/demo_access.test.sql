@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(14);
 
 insert into demo_access_codes (code_hash, display_suffix)
 values ('test-code-hash', 'A5HZ');
@@ -42,6 +42,30 @@ select is(
   claim_demo_generation_attempt('test-session-hash'),
   null::integer,
   'fourth attempt is rejected'
+);
+
+insert into demo_requests (access_code_id, name, package_id)
+select id, 'Test User', 7 from demo_access_codes
+where code_hash = 'test-code-hash';
+
+select ok(
+  complete_demo_generation(
+    'test-session-hash',
+    (select id from demo_requests where access_code_id =
+      (select id from demo_access_codes where code_hash = 'test-code-hash')),
+    'provider-1', 'demo-user', 'ciphertext', 'iv', 'tag', now() + interval '1 hour'
+  ),
+  'successful result is completed atomically'
+);
+select is(
+  (select status from demo_access_codes where code_hash = 'test-code-hash'),
+  'used',
+  'successful result consumes the access code'
+);
+select is(
+  (select status from demo_requests limit 1),
+  'ok',
+  'successful result marks the request complete'
 );
 
 set local role anon;

@@ -27,6 +27,7 @@ create table demo_requests (
   status text not null default 'creating'
     check (status in ('creating','error','ambiguous','ok')),
   attempt_count int not null default 1 check (attempt_count between 1 and 3),
+  provider_external_id text,
   username text,
   password_ciphertext text,
   password_iv text,
@@ -99,6 +100,55 @@ language sql security definer set search_path = public as $$
   returning generation_attempt_count;
 $$;
 
+create or replace function complete_demo_generation(
+  p_session_hash text,
+  p_request_id uuid,
+  p_external_id text,
+  p_username text,
+  p_password_ciphertext text,
+  p_password_iv text,
+  p_password_tag text,
+  p_expires_at timestamptz
+) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare claimed_code_id uuid;
+begin
+  update demo_access_codes
+     set status = 'used', used_at = now(), updated_at = now()
+   where session_hash = p_session_hash
+     and status = 'active'
+     and session_deadline > now()
+     and exists (
+       select 1 from demo_requests
+        where id = p_request_id
+          and access_code_id = demo_access_codes.id
+          and status = 'creating'
+     )
+  returning id into claimed_code_id;
+
+  if claimed_code_id is null then
+    return false;
+  end if;
+
+  update demo_requests
+     set status = 'ok',
+         provider_external_id = p_external_id,
+         username = p_username,
+         password_ciphertext = p_password_ciphertext,
+         password_iv = p_password_iv,
+         password_tag = p_password_tag,
+         provider_expires_at = p_expires_at,
+         error_code = null,
+         completed_at = now(),
+         updated_at = now()
+   where id = p_request_id and access_code_id = claimed_code_id;
+  if not found then
+    raise exception 'demo request completion failed';
+  end if;
+  return true;
+end;
+$$;
+
 create or replace function expire_demo_sessions()
 returns integer
 language plpgsql security definer set search_path = public as $$
@@ -146,6 +196,13 @@ grant execute on function activate_demo_code(text,text,text) to service_role;
 revoke all on function claim_demo_generation_attempt(text)
   from public, anon, authenticated;
 grant execute on function claim_demo_generation_attempt(text) to service_role;
+
+revoke all on function complete_demo_generation(
+  text,uuid,text,text,text,text,text,timestamptz
+) from public, anon, authenticated;
+grant execute on function complete_demo_generation(
+  text,uuid,text,text,text,text,text,timestamptz
+) to service_role;
 
 revoke all on function expire_demo_sessions()
   from public, anon, authenticated;
