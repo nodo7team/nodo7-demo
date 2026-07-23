@@ -27,23 +27,6 @@ const config: Config = {
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           fg: 'hsl(var(--accent-fg))',
-          raptor: 'hsl(var(--accent-raptor))',
-        },
-        clicktv: {
-          50: 'hsl(var(--clicktv-50))',
-          100: 'hsl(var(--clicktv-100))',
-          200: 'hsl(var(--clicktv-200))',
-          500: 'hsl(var(--clicktv-500))',
-          600: 'hsl(var(--clicktv-600))',
-          700: 'hsl(var(--clicktv-700))',
-        },
-        raptor: {
-          50: 'hsl(var(--raptor-50))',
-          100: 'hsl(var(--raptor-100))',
-          200: 'hsl(var(--raptor-200))',
-          500: 'hsl(var(--raptor-500))',
-          600: 'hsl(var(--raptor-600))',
-          700: 'hsl(var(--raptor-700))',
         },
         success: {
           DEFAULT: 'hsl(var(--success))',

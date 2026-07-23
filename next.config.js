@@ -1,13 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  typescript: {
-    ignoreBuildErrors: true,
+  turbopack: {
+    root: process.cwd(),
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  serverExternalPackages: ['tough-cookie'],
 };
 
 module.exports = nextConfig;

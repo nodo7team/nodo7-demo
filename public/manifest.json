@@ -1,9 +1,9 @@
 {
-  "name": "IPTV Panel",
-  "short_name": "IPTV",
-  "description": "Gestión unificada de ClickTV y Raptor TV",
-  "start_url": "/dashboard",
+  "name": "NODO7 Demos",
+  "short_name": "NODO7",
+  "description": "Portal seguro de demos IPTV NODO7",
+  "start_url": "/demo",
   "display": "standalone",
-  "background_color": "#0d1117",
-  "theme_color": "#0d1117"
+  "background_color": "#eff5e4",
+  "theme_color": "#a6ec2f"
 }

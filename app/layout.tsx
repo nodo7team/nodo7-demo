@@ -1,9 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, JetBrains_Mono, Manrope } from "next/font/google";
-import { Toaster } from "sonner";
-import { Providers } from "./providers";
-import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 const display = Barlow_Condensed({
   subsets: ["latin"],
@@ -48,14 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
-      <body className="font-sans antialiased">
-        <ThemeProvider>
-          <Providers>
-            {children}
-            <Toaster position="top-right" richColors />
-          </Providers>
-        </ThemeProvider>
-      </body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }

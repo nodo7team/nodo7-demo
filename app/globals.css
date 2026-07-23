@@ -14,9 +14,8 @@
     --fg-muted:     220 10% 42%;
     --fg-subtle:    220 10% 58%;
 
-    --accent:       199 89% 48%;        /* ClickTV celeste */
+    --accent:       88 78% 48%;
     --accent-fg:    0 0% 100%;
-    --accent-raptor: 160 84% 39%;       /* Raptor verde */
 
     --border:       220 13% 88%;
     --border-glow:  199 89% 48%;
@@ -38,20 +37,6 @@
 
     --radius:       1rem;
 
-    /* Platform scales */
-    --clicktv-50:   199 89% 96%;
-    --clicktv-100:  199 89% 92%;
-    --clicktv-200:  199 89% 82%;
-    --clicktv-500:  199 89% 48%;
-    --clicktv-600:  199 89% 40%;
-    --clicktv-700:  199 89% 32%;
-
-    --raptor-50:    160 84% 96%;
-    --raptor-100:   160 84% 92%;
-    --raptor-200:   160 84% 82%;
-    --raptor-500:   160 84% 39%;
-    --raptor-600:   160 84% 33%;
-    --raptor-700:   160 84% 27%;
   }
 
   .dark {
@@ -77,13 +62,6 @@
     --danger-subtle:  0 82% 68%;
     --info-subtle:    199 87% 64%;
 
-    --clicktv-50:   199 80% 10%;
-    --clicktv-100:  199 80% 15%;
-    --clicktv-200:  199 80% 22%;
-
-    --raptor-50:    160 70% 8%;
-    --raptor-100:   160 70% 13%;
-    --raptor-200:   160 70% 19%;
   }
 
   * { border-color: hsl(var(--border)); }
@@ -168,16 +146,6 @@
     box-shadow: 0 8px 28px -4px hsl(var(--accent) / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.2);
   }
   .btn-primary:active { transform: translateY(0) scale(0.98); }
-
-  .btn-raptor {
-    @apply btn text-white;
-    background: linear-gradient(135deg, hsl(var(--accent-raptor)) 0%, hsl(160 90% 31%) 100%);
-    box-shadow: 0 4px 14px -3px hsl(var(--accent-raptor) / 0.4), inset 0 1px 0 hsl(0 0% 100% / 0.15);
-  }
-  .btn-raptor:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 28px -4px hsl(var(--accent-raptor) / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.2);
-  }
 
   .btn-secondary {
     @apply btn bg-bg-elevated text-fg border border-border;
@@ -286,11 +254,6 @@
   .stagger-4 { animation-delay: 0.2s; }
   .stagger-5 { animation-delay: 0.25s; }
 
-  /* ── Platform colors ── */
-  .bg-clicktv { background: linear-gradient(135deg, hsl(var(--clicktv-500)) 0%, hsl(var(--clicktv-600)) 100%); }
-  .bg-raptor  { background: linear-gradient(135deg, hsl(var(--raptor-500)) 0%, hsl(var(--raptor-600)) 100%); }
-  .text-clicktv { color: hsl(var(--clicktv-500)); }
-  .text-raptor  { color: hsl(var(--raptor-500)); }
 }
 
 /* NODO7 demo access — a broadcast pass, not a generic dashboard. */

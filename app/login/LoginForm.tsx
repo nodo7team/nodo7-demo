@@ -67,7 +67,7 @@ export function LoginForm() {
               className={cn(
                 'h-4 w-4 rounded-full border-2 transition-all duration-200',
                 i < pin.length
-                  ? 'bg-clicktv-500 border-clicktv-500 scale-110'
+                  ? 'bg-accent border-accent scale-110'
                   : 'bg-transparent border-border',
                 error && 'animate-shake border-danger',
               )}
@@ -92,7 +92,7 @@ export function LoginForm() {
             disabled={loading}
             className={cn(
               'h-14 rounded-xl bg-bg-elevated border border-border text-xl font-bold text-fg',
-              'hover:bg-clicktv-500/10 hover:border-clicktv-500/30 hover:-translate-y-px',
+              'hover:bg-accent/10 hover:border-accent/30 hover:-translate-y-px',
               'active:translate-y-0 active:scale-[0.97]',
               'transition-all duration-150',
               'disabled:opacity-30 disabled:pointer-events-none',
@@ -109,7 +109,7 @@ export function LoginForm() {
           disabled={loading}
           className={cn(
             'h-14 rounded-xl bg-bg-elevated border border-border text-xl font-bold text-fg',
-            'hover:bg-clicktv-500/10 hover:border-clicktv-500/30 hover:-translate-y-px',
+            'hover:bg-accent/10 hover:border-accent/30 hover:-translate-y-px',
             'active:translate-y-0 active:scale-[0.97]',
             'transition-all duration-150',
             'disabled:opacity-30 disabled:pointer-events-none',

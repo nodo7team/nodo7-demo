@@ -1,106 +1,82 @@
-# 📺 IPTV Panel — Gestión Unificada ClickTV + Raptor TV
+# NODO7 Demos
 
-Panel web para gestionar tu cartera de clientes IPTV desde un solo lugar.
-Deploy en Vercel, base de datos en Supabase. Acceso con PIN de 6 dígitos. Jesús.
+Portal independiente para entregar demos IPTV mediante códigos de un solo uso. El código no empieza a consumir tiempo al crearse: la ventana segura de 10 minutos comienza únicamente cuando el visitante lo introduce por primera vez.
 
-\---
+## Alcance
 
-## ✅ PASO A PASO PARA DEJARLO ANDANDO
+- `/demo`: acceso público con código, nombre y paquete de demo 6 o 7.
+- `/login`: ingreso privado del administrador mediante PIN.
+- `/demos`: creación, consulta y revocación de códigos, además del estado de cada solicitud.
+- `/api/cron/demo-cleanup`: vencimiento de sesiones y redacción de datos de auditoría.
 
-### Paso 1 — Crear base de datos en Supabase (gratis)
+El proyecto no incluye clientes, ventas, renovaciones ni gestión general de líneas. Está pensado para desplegarse en Vercel, con Supabase en la cuenta de NODO7 y las credenciales del proveedor también en cuentas controladas por NODO7.
 
-1. Entrá a **https://supabase.com** y creá una cuenta (o logueate con GitHub)
-2. Click en **"New Project"**
+## Desarrollo local
 
-   * Nombre: `iptv-panel`
-   * Password de DB: generá uno aleatorio (lo guarda Supabase, no lo necesitás)
-   * Región: elegí la más cercana a vos
-3. Esperá 1-2 minutos a que se cree
-4. Abrí el **SQL Editor** (menú lateral izquierdo)
-5. Pegá **TODO** el contenido del archivo `supabase/migrations/0001\_init.sql` y hacé click en **Run**
-6. Andá a **Settings → API** (menú lateral) y copiá estos 3 valores:
+Requisitos: Node.js 20 o superior y un proyecto de Supabase.
 
-   * `Project URL` → es tu `NEXT\_PUBLIC\_SUPABASE\_URL`
-   * `anon public` key → es tu `NEXT\_PUBLIC\_SUPABASE\_ANON\_KEY`
-   * `service\_role` key → es tu `SUPABASE\_SERVICE\_ROLE\_KEY` (⚠️ secreto)
-
-### Paso 2 — Generar el hash de tu PIN
-
-Necesitás Node.js en tu PC. Abrí terminal:
-
-```bash
-cd iptv-panel
-npm install
-npx tsx scripts/set-pin.ts 123456
+```powershell
+npm.cmd install
+Copy-Item .env.example .env.local
 ```
 
-(Cambiá `123456` por el PIN que quieras usar)
+Genera tres secretos hexadecimales independientes para `SESSION_SECRET`, `DEMO_HASH_SECRET` y `CRON_SECRET`:
 
-Te va a imprimir algo así:
-
-```
-APP\_PIN\_HASH=$2a$10$xxxxxxxxxxxxxxxxxxxxxxxxxxx
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Copiá ese valor completo (desde `$2a$10$...`).
+Genera la clave de cifrado de credenciales:
 
-### Paso 3 — Subir a GitHub
-
-```bash
-cd iptv-panel
-git init
-git add .
-git commit -m "IPTV Panel v1"
-git remote add origin https://github.com/TU\_USUARIO/iptv-panel.git
-git branch -M main
-git push -u origin main
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-### Paso 4 — Deploy en Vercel
+Genera el hash del PIN administrador:
 
-1. Entrá a **https://vercel.com** (logueate con GitHub)
-2. Click en **"Add New → Project"**
-3. Seleccioná el repo `iptv-panel`
-4. Framework: **Next.js** (se autodetecta)
-5. Antes de hacer deploy, hacé click en **"Environment Variables"** y cargá estas 11 variables:
-
-|Variable|Valor|
-|-|-|
-|`XUI\_API\_KEY`|Tu API key de ClickTV|
-|`XUI\_BASE\_URL`|`http://dns.clicktv.online:8080/TbAzTlac/reseller/index.php`|
-|`RAPTOR\_URL`|`https://ventas.raptorxyz.com`|
-|`RAPTOR\_USER`|Tu usuario de Raptor|
-|`RAPTOR\_PASS`|Tu contraseña de Raptor|
-|`NEXT\_PUBLIC\_SUPABASE\_URL`|La URL del paso 1|
-|`NEXT\_PUBLIC\_SUPABASE\_ANON\_KEY`|La anon key del paso 1|
-|`SUPABASE\_SERVICE\_ROLE\_KEY`|La service\_role key del paso 1|
-|`APP\_PIN\_HASH`|El hash del paso 2|
-|`SESSION\_SECRET`|Un texto aleatorio largo (mínimo 32 caracteres)|
-|`CRON\_SECRET`|Otro texto aleatorio (para proteger el cron)|
-
-6. Click en **Deploy** ✅
-
-### Paso 5 — Verificar
-
-1. Abrí la URL que te da Vercel
-2. Ingresá tu PIN
-3. Hacé click en **"Sincronizar"** para traer las líneas de ambas plataformas
-4. ¡Listo!
-
-### Paso 6 (opcional) — Importar contactos
-
-Creá un `contacts.json`:
-
-```json
-\[
-  { "name": "Juan", "phone": "+5492974601012", "username": "juantv877", "platform": "clicktv" },
-  { "name": "María", "phone": "+5491155551234", "username": "maria@gmail.com", "platform": "raptor" }
-]
+```powershell
+npm.cmd run set-pin -- 123456
 ```
 
-```bash
-export NEXT\_PUBLIC\_SUPABASE\_URL=tu\_url
-export SUPABASE\_SERVICE\_ROLE\_KEY=tu\_key
-npx tsx scripts/import-contacts.ts contacts.json
+Completa los valores en `.env.local` y ejecuta:
+
+```powershell
+npm.cmd run dev
 ```
 
+## Supabase sin Docker
+
+1. Crea un proyecto nuevo en la cuenta de NODO7.
+2. En el SQL Editor, ejecuta `supabase/migrations/20260722000000_nodo7_demo_access.sql`.
+3. Copia la URL del proyecto a `NEXT_PUBLIC_SUPABASE_URL`.
+4. Copia la clave `service_role` a `SUPABASE_SERVICE_ROLE_KEY` únicamente en `.env.local` y en las variables privadas de Vercel.
+
+También puede aplicarse la migración con la CLI, después de autenticarla y vincular el proyecto:
+
+```powershell
+npx.cmd supabase link --project-ref TU_PROJECT_REF
+npx.cmd supabase db push
+```
+
+No publiques la clave `service_role`, no la envíes por chat y no la subas a Git.
+
+## Proveedor de demos
+
+El sistema se entrega con `DEMO_PROVIDER=disabled`. Así se puede validar el flujo completo sin crear líneas reales por accidente.
+
+Cuando NODO7 entregue el contrato de la API del proveedor, se ajustará el adaptador aislado y se configurarán `DEMO_PROVIDER_BASE_URL` y `DEMO_PROVIDER_API_KEY`. El adaptador de compatibilidad existente solo debe habilitarse con `DEMO_PROVIDER=clicktv` si el contrato real confirma ese protocolo y los paquetes 6 y 7.
+
+## Verificación
+
+```powershell
+npm.cmd run test
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd run check
+```
+
+## Despliegue en Vercel
+
+El destino previsto es el repositorio `nodo7team/nodo7-demo` y un proyecto Vercel de NODO7. Antes del primer despliegue, carga todas las variables de `.env.example` en Vercel y configura los mismos valores para Production, Preview y Development según corresponda.
+
+El cron de Vercel se declara en `vercel.json`. `CRON_SECRET` protege su ejecución. El proveedor debe permanecer desactivado hasta validar la API real y hacer una prueba controlada.
