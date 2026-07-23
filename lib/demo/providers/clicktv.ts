@@ -14,6 +14,9 @@ interface ClickTvProviderOptions {
 
 type ProviderPayload = Record<string, any>;
 
+const CREDENTIAL_ALPHABET =
+  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
 function packageName(packageId: 6 | 7): string {
   return packageId === 7 ? "1 hora FULL" : "4 horas";
 }
@@ -27,12 +30,30 @@ function parseExpiration(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function deterministicCredentials(idempotencyKey: string) {
-  const compact = idempotencyKey.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-  const digest = hashSecret(`provider:${idempotencyKey}`);
+function normalizeFirstName(name: string): string {
+  const first = name.trim().split(/\s+/)[0] ?? "";
+  const normalized = first
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 12);
+  return normalized || "cliente";
+}
+
+function deterministicCredentials(input: DemoProviderInput) {
+  const digest = hashSecret(`provider:${input.idempotencyKey}`);
+  const suffix = String(Number.parseInt(digest.slice(0, 8), 16) % 1_000)
+    .padStart(3, "0");
+  const password = Array.from({ length: 8 }, (_, index) => {
+    const offset = 8 + index * 2;
+    const byte = Number.parseInt(digest.slice(offset, offset + 2), 16);
+    return CREDENTIAL_ALPHABET[byte % CREDENTIAL_ALPHABET.length];
+  }).join("");
+
   return {
-    username: `n7${compact.slice(0, 12)}`,
-    password: `${digest.slice(0, 10)}A7!`,
+    username: `${normalizeFirstName(input.name)}tv${suffix}`,
+    password,
   };
 }
 
@@ -44,11 +65,11 @@ class ClickTvDemoProvider implements DemoProvider {
   }
 
   async createDemo(input: DemoProviderInput): Promise<DemoProviderResult> {
-    const credentials = deterministicCredentials(input.idempotencyKey);
+    const credentials = deterministicCredentials(input);
     const url = new URL(this.options.baseUrl);
-    url.searchParams.set("api_key", this.options.apiKey);
-    url.searchParams.set("action", "create_line");
     const form = new URLSearchParams({
+      api_key: this.options.apiKey,
+      action: "create_line",
       package: String(input.packageId),
       trial: "1",
       is_isplock: "0",
@@ -81,12 +102,22 @@ class ClickTvDemoProvider implements DemoProvider {
     } catch {
       throw new DemoProviderError("PROVIDER_INVALID_RESPONSE", "ambiguous");
     }
-    if (payload.result === false || payload.error) {
-      throw new DemoProviderError("PROVIDER_REJECTED", "explicit");
+    if (payload.status !== "STATUS_SUCCESS") {
+      const usernameExists = payload.status === "STATUS_EXISTS_USERNAME";
+      throw new DemoProviderError(
+        usernameExists ? "PROVIDER_USERNAME_EXISTS" : "PROVIDER_REJECTED",
+        usernameExists ? "ambiguous" : "explicit",
+      );
+    }
+    if (
+      !payload.data ||
+      typeof payload.data !== "object" ||
+      Array.isArray(payload.data)
+    ) {
+      throw new DemoProviderError("PROVIDER_INVALID_RESPONSE", "ambiguous");
     }
 
-    const data =
-      payload.data && typeof payload.data === "object" ? payload.data : payload;
+    const data = payload.data;
     return {
       externalId: String(data.id ?? credentials.username),
       username: String(data.username ?? credentials.username),

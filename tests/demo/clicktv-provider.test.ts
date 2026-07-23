@@ -11,10 +11,13 @@ describe("ClickTV demo compatibility provider", () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          id: 42,
-          username: "real-user",
-          password: "real-pass",
-          exp_date: 1784731200,
+          status: "STATUS_SUCCESS",
+          data: {
+            id: 42,
+            username: "real-user",
+            password: "real-pass",
+            exp_date: 1784731200,
+          },
         }),
         { status: 200 },
       ),
@@ -25,7 +28,7 @@ describe("ClickTV demo compatibility provider", () => {
       fetchImpl,
     });
     const input = {
-      name: "María",
+      name: "María José",
       packageId: 7 as const,
       idempotencyKey: "00000000-0000-4000-8000-000000000001",
     };
@@ -37,34 +40,84 @@ describe("ClickTV demo compatibility provider", () => {
       packageName: "1 hora FULL",
     });
     const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("action=create_line");
-    expect(url).toContain("api_key=private-key");
+    expect(url).toBe("https://provider.example/api");
+    expect(init.method).toBe("POST");
     const form = new URLSearchParams(String(init.body));
+    expect(form.get("api_key")).toBe("private-key");
+    expect(form.get("action")).toBe("create_line");
     expect(form.get("package")).toBe("7");
     expect(form.get("trial")).toBe("1");
-    expect(form.get("username")).toMatch(/^n7/);
-    expect(form.get("password")).toBeTruthy();
+    expect(form.get("is_isplock")).toBe("0");
+    expect(form.get("username")).toMatch(/^mariatv\d{3}$/);
+    expect(form.get("password")).toMatch(/^[A-Za-z2-9]{8}$/);
     expect(form.has("paid")).toBe(false);
   });
 
-  it("classifies provider rejections separately from unknown outcomes", async () => {
-    const rejected = createClickTvDemoProvider({
+  async function submittedCredentials(
+    name: string,
+    idempotencyKey: string,
+  ): Promise<{ username: string | null; password: string | null }> {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "STATUS_SUCCESS",
+          data: { id: 42, exp_date: 1784731200 },
+        }),
+        { status: 200 },
+      ),
+    );
+    const provider = createClickTvDemoProvider({
+      baseUrl: "https://provider.example/api",
+      apiKey: "private-key",
+      fetchImpl,
+    });
+    await provider.createDemo({ name, packageId: 7, idempotencyKey });
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const form = new URLSearchParams(String(init.body));
+    return {
+      username: form.get("username"),
+      password: form.get("password"),
+    };
+  }
+
+  it("uses the first normalized name with stable readable credentials", async () => {
+    const key = "00000000-0000-4000-8000-000000000001";
+    const first = await submittedCredentials("María José", key);
+    const same = await submittedCredentials("María José", key);
+    const different = await submittedCredentials(
+      "María José",
+      "00000000-0000-4000-8000-000000000002",
+    );
+
+    expect(first.username).toMatch(/^mariatv\d{3}$/);
+    expect(first.password).toMatch(/^[A-Za-z2-9]{8}$/);
+    expect(same).toEqual(first);
+    expect(different).not.toEqual(first);
+  });
+
+  it.each([
+    ["STATUS_FAILURE", "explicit"],
+    ["STATUS_INVALID_PACKAGE", "explicit"],
+    ["STATUS_EXISTS_USERNAME", "ambiguous"],
+  ] as const)("classifies %s as %s", async (status, outcome) => {
+    const provider = createClickTvDemoProvider({
       baseUrl: "https://provider.example/api",
       apiKey: "private-key",
       fetchImpl: vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ result: false, error: "no credits" }), {
-          status: 200,
-        }),
+        new Response(JSON.stringify({ status, data: {} }), { status: 200 }),
       ),
     });
+
     await expect(
-      rejected.createDemo({
-        name: "María",
+      provider.createDemo({
+        name: "Pedro Gómez",
         packageId: 7,
         idempotencyKey: "00000000-0000-4000-8000-000000000001",
       }),
-    ).rejects.toMatchObject({ outcome: "explicit" });
+    ).rejects.toMatchObject({ outcome });
+  });
 
+  it("classifies network failures as unknown outcomes", async () => {
     const timedOut = createClickTvDemoProvider({
       baseUrl: "https://provider.example/api",
       apiKey: "private-key",
@@ -72,7 +125,7 @@ describe("ClickTV demo compatibility provider", () => {
     });
     await expect(
       timedOut.createDemo({
-        name: "María",
+        name: "María José",
         packageId: 7,
         idempotencyKey: "00000000-0000-4000-8000-000000000001",
       }),
