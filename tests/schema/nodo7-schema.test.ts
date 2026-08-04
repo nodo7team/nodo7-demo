@@ -7,6 +7,13 @@ const sql = readFileSync(
   "utf8",
 ).toLowerCase();
 
+function credentialTypeMigration(): string {
+  return readFileSync(
+    "supabase/migrations/0002_demo_credential_type.sql",
+    "utf8",
+  ).toLowerCase();
+}
+
 describe("NODO7 schema", () => {
   it("contains only the demo domain tables", () => {
     expect(sql).toContain("create table demo_access_codes");
@@ -35,5 +42,26 @@ describe("NODO7 schema", () => {
     expect(sql).toContain("create or replace function complete_demo_generation");
     expect(sql).toContain("set status = 'used'");
     expect(sql).toContain("set status = 'ok'");
+  });
+});
+
+describe("NODO7 credential type migration", () => {
+  it("adds the credential type without touching the codes already issued", () => {
+    const migration = credentialTypeMigration();
+    expect(migration).toContain("alter table demo_access_codes");
+    expect(migration).toContain("add column");
+    expect(migration).toContain("credential_type text not null default 'line'");
+    expect(migration).toContain(
+      "check (credential_type in ('line','activecode'))",
+    );
+  });
+
+  it("redacts secrets that never receive a provider expiration", () => {
+    const migration = credentialTypeMigration();
+    expect(migration).toContain(
+      "create or replace function redact_demo_audit",
+    );
+    expect(migration).toContain("provider_expires_at is null");
+    expect(migration).toContain("interval '7 days'");
   });
 });
