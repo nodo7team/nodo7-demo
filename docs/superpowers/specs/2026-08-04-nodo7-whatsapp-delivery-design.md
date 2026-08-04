@@ -57,8 +57,31 @@ Endpoints usados:
 | Validar número | `POST https://api.waclient.com/check_number` |
 | Enviar texto | `POST https://api.waclient.com/send` |
 | Estado de la sesión | `GET https://api.waclient.com/instance_status` |
+| Número conectado | `GET https://api.waclient.com/instance_info` |
 
 La vinculación por QR se hace en el panel de waclient, no en NODO7. Construir una pantalla de QR propia queda fuera de alcance.
+
+## Identidad del remitente
+
+Un `access_token` puede tener varias instancias, y **cada instancia está atada a un número distinto**. El `instance_id` es lo único que decide desde qué número sale el mensaje: `/send` no tiene un campo de remitente.
+
+```
+POST /send
+{ "number": "...",       ← destinatario
+  "instance_id": "..." } ← elige el remitente
+```
+
+El número queda atado a la instancia al vincular, y lo define el teléfono que confirma la vinculación. `get_paircode` recibe un `phone`, pero ese campo indica **qué cuenta vincular**, no a quién enviar; se presta a confusión con el `number` de `/send`.
+
+NODO7 envía desde un único número, así que el `instance_id` va fijo en una variable de entorno.
+
+**Guarda contra el remitente equivocado.** Si la sesión se cae y alguien vuelve a vincular esa instancia con otro teléfono, el `instance_id` no cambia y los mensajes saldrían desde un número ajeno sin que nadie se entere. Antes de enviar se contrasta el número realmente conectado contra el esperado:
+
+```
+GET /instance_info → data.account.phone
+```
+
+Si no coincide con `WHATSAPP_EXPECTED_PHONE`, no se envía y el panel avisa. Con varias instancias bajo el mismo token, apuntar al `instance_id` equivocado es un error fácil de cometer y difícil de notar.
 
 ## Huecos en la documentación del proveedor
 
@@ -126,9 +149,12 @@ Antes de activarlo, NODO7 debería comprobar a mano, sobre demos reales, que los
 WHATSAPP_PROVIDER=disabled
 WHATSAPP_ACCESS_TOKEN=
 WHATSAPP_INSTANCE_ID=
+WHATSAPP_EXPECTED_PHONE=
 WHATSAPP_MESSAGE_TEMPLATE=
 WHATSAPP_HIDE_CREDENTIALS=false
 ```
+
+`WHATSAPP_EXPECTED_PHONE` es el número de NODO7 desde el que deben salir los mensajes, en formato internacional. Sirve de guarda, no de selector: quien elige el remitente es `WHATSAPP_INSTANCE_ID`.
 
 ## Límite de intentos
 
@@ -141,6 +167,7 @@ Hoy son 3 y cualquier envío mal formado consume uno, a propósito, para impedir
 | Formato de teléfono inválido | Error en el formulario, no se llama a nadie |
 | `check_number` dice que no existe | Error visible, no se crea la demo |
 | `check_number` no responde | Se continúa y se genera igual; no se puede castigar al visitante por una caída nuestra |
+| El número conectado no es el esperado | No se envía. `delivery_status = 'failed'` y aviso en el panel |
 | Envío falla o la instancia está desconectada | `delivery_status = 'failed'`, credenciales en pantalla |
 | `WHATSAPP_PROVIDER=disabled` | `delivery_status = 'disabled'`, comportamiento actual intacto |
 
