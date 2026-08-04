@@ -18,13 +18,22 @@ export interface EncryptedCredential {
   tag: string;
 }
 
-export interface DemoResultView {
-  username: string;
-  password: string;
-  packageId: DemoPackageId;
-  packageName: string;
-  expiresAt: string | null;
-}
+export type DemoResultView =
+  | {
+      kind: "line";
+      username: string;
+      password: string;
+      packageId: DemoPackageId;
+      packageName: string;
+      expiresAt: string | null;
+    }
+  | {
+      kind: "activecode";
+      code: string;
+      packageId: DemoPackageId;
+      packageName: string;
+      expiresAt: null;
+    };
 
 export type DemoSessionView =
   | { state: "none" | "expired" }

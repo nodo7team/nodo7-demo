@@ -7,6 +7,8 @@ Portal independiente para entregar demos IPTV mediante códigos de un solo uso. 
 - `/demo`: acceso público con código, nombre y paquete de demo 6 o 7.
 - `/login`: ingreso privado del administrador mediante PIN.
 - `/demos`: creación, consulta y revocación de códigos, además del estado de cada solicitud.
+
+Al emitir cada código, el administrador elige qué recibirá el visitante: un **usuario y contraseña** (`create_line`) o un **código de activación** (`create_activecode`). El paquete lo sigue eligiendo el visitante. Un código de activación no trae vencimiento del proveedor, porque la línea nace recién cuando se canjea en la aplicación.
 - `/api/cron/demo-cleanup`: vencimiento de sesiones y redacción de datos de auditoría.
 
 El proyecto no incluye clientes, ventas, renovaciones ni gestión general de líneas. Está pensado para desplegarse en Vercel, con Supabase en la cuenta de NODO7 y las credenciales del proveedor también en cuentas controladas por NODO7.
@@ -47,7 +49,7 @@ npm.cmd run dev
 ## Supabase sin Docker
 
 1. Crea un proyecto nuevo en la cuenta de NODO7.
-2. En el SQL Editor, ejecuta `supabase/migrations/0001_nodo7_demo_access.sql`.
+2. En el SQL Editor, ejecuta `supabase/migrations/0001_nodo7_demo_access.sql` y luego `supabase/migrations/0002_demo_credential_type.sql`.
 3. Copia la URL del proyecto a `NEXT_PUBLIC_SUPABASE_URL`.
 4. Copia la clave `service_role` a `SUPABASE_SERVICE_ROLE_KEY` únicamente en `.env.local` y en las variables privadas de Vercel.
 

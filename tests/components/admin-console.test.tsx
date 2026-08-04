@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AdminConsole } from "@/components/admin/AdminConsole";
@@ -11,10 +11,14 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function code(status: AdminCodeView["status"]): AdminCodeView {
+function code(
+  status: AdminCodeView["status"],
+  credentialType: AdminCodeView["credentialType"] = "line",
+): AdminCodeView {
   return {
     id: `${status}-1`,
     displaySuffix: "ABCD",
+    credentialType,
     status,
     generationAttemptCount: 1,
     activationIp: null,
@@ -57,6 +61,45 @@ describe("NODO7 admin console", () => {
     expect(await screen.findByText("N7-ABCD-EFGH-JKLM-NPQR-STUV")).toBeVisible();
     await user.click(screen.getByRole("button", { name: /copiar código/i }));
     expect(writeText).toHaveBeenCalledWith("N7-ABCD-EFGH-JKLM-NPQR-STUV");
+  });
+
+  it("issues an activation pass when the admin picks that type", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          code: "N7-ABCD-EFGH-JKLM-NPQR-STUV",
+          record: code("pending", "activecode"),
+        },
+        201,
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AdminConsole initialCodes={[]} />);
+
+    await user.click(
+      screen.getByRole("radio", { name: /código de activación/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /crear código/i }));
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      credentialType: "activecode",
+    });
+    expect(
+      await screen.findByText(/entrega: código de activación/i),
+    ).toBeVisible();
+  });
+
+  it("labels what each issued code will deliver", () => {
+    render(
+      <AdminConsole
+        initialCodes={[code("pending", "activecode"), code("active", "line")]}
+      />,
+    );
+    const table = within(screen.getByRole("table"));
+    expect(table.getByText("Código de activación")).toBeVisible();
+    expect(table.getByText("Usuario y contraseña")).toBeVisible();
   });
 
   it("offers replacement instead of reset for terminal codes", () => {

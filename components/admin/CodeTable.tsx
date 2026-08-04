@@ -1,6 +1,7 @@
 "use client";
 
 import { Ban, Plus, RotateCw } from "lucide-react";
+import { CREDENTIAL_TYPE_LABELS } from "@/components/admin/CodeGenerator";
 import type { AdminCodeView } from "@/lib/demo/admin-client";
 
 const STATUS_LABELS: Record<AdminCodeView["status"], string> = {
@@ -39,13 +40,18 @@ export function CodeTable({ codes, busyId, onRevoke, onReplacement, onRefresh }:
       ) : (
         <div className="n7-admin-table-scroll">
           <table>
-            <thead><tr><th>Pase</th><th>Estado</th><th>Visitante / demo</th><th>Ventana</th><th>Red</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Pase</th><th>Entrega</th><th>Estado</th><th>Visitante / demo</th><th>Ventana</th><th>Red</th><th>Acción</th></tr></thead>
             <tbody>
               {codes.map((code) => {
                 const revocable = code.status === "pending" || code.status === "active";
                 return (
                   <tr key={code.id}>
                     <td><strong>••••-{code.displaySuffix}</strong><small>{date(code.createdAt)}</small></td>
+                    <td>
+                      <span className="n7-admin-type" data-type={code.credentialType}>
+                        {CREDENTIAL_TYPE_LABELS[code.credentialType]}
+                      </span>
+                    </td>
                     <td><span className="n7-admin-status" data-status={code.status}>{STATUS_LABELS[code.status]}</span></td>
                     <td>
                       <strong>{code.request?.name ?? "Sin activar"}</strong>

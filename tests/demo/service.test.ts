@@ -11,7 +11,10 @@ import type {
   DemoRepository,
 } from "@/lib/demo/repository";
 import { encryptCredential, hashSecret } from "@/lib/demo/secrets";
-import type { AccessCodeStatus } from "@/lib/demo/types";
+import type {
+  AccessCodeStatus,
+  DemoCredentialType,
+} from "@/lib/demo/types";
 
 const NOW = new Date("2026-07-22T12:00:00.000Z");
 
@@ -25,11 +28,13 @@ class InMemoryDemoRepository implements DemoRepository {
   async createCode(input: {
     codeHash: string;
     displaySuffix: string;
+    credentialType: DemoCredentialType;
   }): Promise<AccessCodeRecord> {
     const record: AccessCodeWithRequest = {
       id: `code-${this.records.length + 1}`,
       codeHash: input.codeHash,
       displaySuffix: input.displaySuffix,
+      credentialType: input.credentialType,
       status: "pending",
       sessionHash: null,
       generationAttemptCount: 0,
@@ -111,11 +116,16 @@ class InMemoryDemoRepository implements DemoRepository {
   }
 }
 
-function makeUsedRecord(token: string): AccessCodeWithRequest {
+function makeUsedRecord(
+  token: string,
+  credentialType: DemoCredentialType = "line",
+): AccessCodeWithRequest {
+  const activation = credentialType === "activecode";
   return {
     id: "used-code",
     codeHash: hashSecret("N7-USED-CODE"),
     displaySuffix: "CODE",
+    credentialType,
     status: "used",
     sessionHash: hashSecret(token),
     generationAttemptCount: 1,
@@ -134,9 +144,9 @@ function makeUsedRecord(token: string): AccessCodeWithRequest {
       providerIdempotencyKey: "00000000-0000-4000-8000-000000000001",
       status: "ok",
       attemptCount: 1,
-      username: "demo-user",
-      password: encryptCredential("demo-pass"),
-      providerExpiresAt: "2026-07-22T13:01:00.000Z",
+      username: activation ? null : "demo-user",
+      password: encryptCredential(activation ? "N7ABCD2345" : "demo-pass"),
+      providerExpiresAt: activation ? null : "2026-07-22T13:01:00.000Z",
       errorCode: null,
       createdAt: NOW.toISOString(),
       completedAt: "2026-07-22T12:01:00.000Z",
@@ -157,15 +167,22 @@ describe("demo access service", () => {
   });
 
   it("does not assign a deadline when an admin creates a code", async () => {
-    const created = await service.createAdminCode();
+    const created = await service.createAdminCode("line");
     expect(created.code).toMatch(/^N7-/);
     expect(created.record.status).toBe("pending");
     expect(created.record.sessionDeadline).toBeNull();
     expect(created.record.codeHash).not.toBe(created.code);
   });
 
+  it("remembers the credential type chosen when the code was issued", async () => {
+    const activation = await service.createAdminCode("activecode");
+    const credentials = await service.createAdminCode("line");
+    expect(activation.record.credentialType).toBe("activecode");
+    expect(credentials.record.credentialType).toBe("line");
+  });
+
   it("starts one ten-minute session and rejects a second activation", async () => {
-    const { code } = await service.createAdminCode();
+    const { code } = await service.createAdminCode("line");
     const first = await service.activateAccessCode({
       code,
       ip: "203.0.113.4",
@@ -196,7 +213,7 @@ describe("demo access service", () => {
   });
 
   it("normalizes access codes and records only a fingerprint", async () => {
-    const { code } = await service.createAdminCode();
+    const { code } = await service.createAdminCode("line");
     await service.activateAccessCode({
       code: `  ${code.toLowerCase()}  `,
       ip: "203.0.113.4",
@@ -207,7 +224,7 @@ describe("demo access service", () => {
   });
 
   it("does not strand a consumed code when audit recording fails", async () => {
-    const { code } = await service.createAdminCode();
+    const { code } = await service.createAdminCode("line");
     repository.failAttemptAudit = true;
     await expect(
       service.activateAccessCode({
@@ -222,7 +239,7 @@ describe("demo access service", () => {
   });
 
   it("resumes setup from the opaque session token", async () => {
-    const { code } = await service.createAdminCode();
+    const { code } = await service.createAdminCode("line");
     const activated = await service.activateAccessCode({
       code,
       ip: "203.0.113.4",
@@ -238,7 +255,7 @@ describe("demo access service", () => {
   });
 
   it("expires a session from server time", async () => {
-    const { code } = await service.createAdminCode();
+    const { code } = await service.createAdminCode("line");
     const activated = await service.activateAccessCode({
       code,
       ip: "203.0.113.4",
@@ -258,6 +275,7 @@ describe("demo access service", () => {
     await expect(service.getSessionView(token, NOW)).resolves.toMatchObject({
       state: "result",
       result: {
+        kind: "line",
         username: "demo-user",
         password: "demo-pass",
         packageId: 7,
@@ -272,8 +290,23 @@ describe("demo access service", () => {
     ).resolves.toEqual({ state: "expired" });
   });
 
+  it("decrypts an activation code without inventing a username", async () => {
+    const token = "activation-session-token";
+    repository.records.push(makeUsedRecord(token, "activecode"));
+    await expect(service.getSessionView(token, NOW)).resolves.toMatchObject({
+      state: "result",
+      result: {
+        kind: "activecode",
+        code: "N7ABCD2345",
+        packageId: 7,
+        packageName: "1 hora FULL",
+        expiresAt: null,
+      },
+    });
+  });
+
   it("revokes only pending or active codes", async () => {
-    const pending = await service.createAdminCode();
+    const pending = await service.createAdminCode("line");
     await expect(service.revokeAdminCode(pending.record.id)).resolves.toBe(true);
 
     const used = makeUsedRecord("another-token");
@@ -282,7 +315,7 @@ describe("demo access service", () => {
   });
 
   it("filters admin records and runs both cleanup operations", async () => {
-    await service.createAdminCode();
+    await service.createAdminCode("line");
     repository.records.push({
       ...makeUsedRecord("list-token"),
       status: "expired" as AccessCodeStatus,

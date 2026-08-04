@@ -473,6 +473,8 @@
 .n7-credentials dt { color: #6f7d6e; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
 .n7-credentials dd { grid-column: 1; margin: 0; overflow-wrap: anywhere; font: 600 1.05rem var(--font-mono), monospace; }
 .n7-credentials button { grid-column: 2; grid-row: 1 / 3; align-self: center; display: grid; place-items: center; width: 40px; height: 40px; color: #365622; background: #dcf2b5; border: 0; cursor: pointer; }
+.n7-credentials-single > div { padding: 1.4rem; background: #eefadd; border-color: #9dc266; }
+.n7-credentials-single dd { font-size: 1.5rem; letter-spacing: 0.06em; }
 .n7-result-meta { display: flex; justify-content: space-between; gap: 1rem; padding: 0.8rem 0; color: var(--n7-muted); border-block: 1px dashed #bcc8b7; font-size: 0.68rem; }
 .n7-result-warning { margin: 0; color: #72521d; font-size: 0.72rem; line-height: 1.55; }
 .n7-expired { padding: clamp(2rem, 8vh, 5rem) 0; text-align: center; }
@@ -545,7 +547,19 @@
 .n7-admin-generator p { margin: 0; color: #b9c9bb; font-size: 0.78rem; }
 .n7-admin-generator > div > span { display: inline-flex; gap: 0.45rem; align-items: center; color: #bde868; }
 .n7-admin-primary { align-self: center; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0.75rem 1rem; color: #17321e; background: #cfff6f; border: 0; font-weight: 900; cursor: pointer; }
+.n7-admin-type-fieldset { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; }
+.n7-admin-type-fieldset legend { margin-bottom: 0.6rem; color: #bde868; font: 700 0.58rem var(--font-mono), monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.n7-admin-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.n7-admin-type-option { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.6rem; align-items: center; padding: 0.85rem; background: #1b3d29; border: 1px solid #33604073; cursor: pointer; }
+.n7-admin-type-option input { position: absolute; opacity: 0; }
+.n7-admin-type-option[data-selected="true"] { background: #24512f; border-color: #9bdd2f; box-shadow: inset 0 -3px #9bdd2f; }
+.n7-admin-type-option:focus-within { outline: 3px solid rgb(155 221 47 / 0.42); outline-offset: 2px; }
+.n7-admin-type-icon { grid-row: 1 / 3; display: grid; place-items: center; width: 32px; height: 32px; color: #16331d; background: #bde868; border-radius: 50%; }
+.n7-admin-type-option strong { font-size: 0.8rem; }
+.n7-admin-type-option small { color: #a9bfaa; font-size: 0.64rem; line-height: 1.4; }
+
 .n7-admin-new-code { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; color: #17321e; background: #efffd1; }
+.n7-admin-new-code-type { color: #3f6030; font-size: 0.66rem; font-style: normal; font-weight: 700; }
 .n7-admin-new-code > div { display: grid; gap: 0.35rem; min-width: 0; }
 .n7-admin-new-code small { color: #647458; font: 600 0.58rem var(--font-mono), monospace; }
 .n7-admin-new-code strong { overflow-wrap: anywhere; font: 700 0.98rem var(--font-mono), monospace; }
@@ -568,6 +582,8 @@
 .n7-admin-status { display: inline-flex; padding: 0.3rem 0.5rem; color: #4f5e50; background: #e9eee6; font-size: 0.62rem; font-weight: 800; }
 .n7-admin-status[data-status="active"], .n7-admin-status[data-status="used"] { color: #244b14; background: #dcf6b2; }
 .n7-admin-status[data-status="expired"], .n7-admin-status[data-status="revoked"] { color: #712f2a; background: #f8ddd8; }
+.n7-admin-type { display: inline-flex; padding: 0.3rem 0.5rem; color: #3c5340; background: #eaefe7; border: 1px solid #d2ddcd; font-size: 0.62rem; font-weight: 800; }
+.n7-admin-type[data-type="activecode"] { color: #2b4470; background: #e2ecfb; border-color: #bed3f0; }
 .n7-admin-danger,
 .n7-admin-action { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.48rem 0.6rem; border: 0; font-size: 0.64rem; font-weight: 800; cursor: pointer; }
 .n7-admin-danger { color: #7e2823; background: #fbe4df; }
@@ -588,6 +604,7 @@
   .n7-admin-header nav a,
   .n7-admin-header nav button { font-size: 0.65rem; }
   .n7-admin-generator { grid-template-columns: 1fr; }
+  .n7-admin-type-grid { grid-template-columns: 1fr; }
   .n7-admin-primary { justify-content: center; width: 100%; }
   .n7-admin-new-code { align-items: stretch; flex-direction: column; }
   .n7-admin-new-code button { justify-content: center; }

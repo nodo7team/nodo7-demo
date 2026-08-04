@@ -2,7 +2,10 @@ import type {
   AccessCodeWithRequest,
   DemoRequestRecord,
 } from "@/lib/demo/repository";
-import type { AccessCodeStatus } from "@/lib/demo/types";
+import type {
+  AccessCodeStatus,
+  DemoCredentialType,
+} from "@/lib/demo/types";
 
 export interface AdminRequestView {
   name: string;
@@ -17,6 +20,7 @@ export interface AdminRequestView {
 export interface AdminCodeView {
   id: string;
   displaySuffix: string;
+  credentialType: DemoCredentialType;
   status: AccessCodeStatus;
   generationAttemptCount: number;
   activationIp: string | null;
@@ -33,6 +37,7 @@ export function toAdminCodeView(record: AccessCodeWithRequest): AdminCodeView {
   return {
     id: record.id,
     displaySuffix: record.displaySuffix,
+    credentialType: record.credentialType,
     status: record.status,
     generationAttemptCount: record.generationAttemptCount,
     activationIp: record.activationIp,

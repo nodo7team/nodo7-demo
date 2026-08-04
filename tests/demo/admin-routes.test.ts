@@ -5,12 +5,16 @@ import { createAdminCodeHandlers } from "@/app/api/admin/demo-codes/route";
 import { createRevokeHandler } from "@/app/api/admin/demo-codes/[id]/revoke/route";
 import { createCleanupHandler } from "@/app/api/cron/demo-cleanup/route";
 import type { AccessCodeWithRequest } from "@/lib/demo/repository";
+import type { DemoAccessService } from "@/lib/demo/service";
+
+type CreateAdminCode = DemoAccessService["createAdminCode"];
 
 function record(status: AccessCodeWithRequest["status"]): AccessCodeWithRequest {
   return {
     id: "code-1",
     codeHash: "secret-hash",
     displaySuffix: "ABCD",
+    credentialType: "line",
     status,
     sessionHash: "session-hash",
     generationAttemptCount: 1,
@@ -62,6 +66,47 @@ describe("admin demo routes", () => {
     expect(body.record.status).toBe("pending");
     expect(body.record.codeHash).toBeUndefined();
     expect(body.record.sessionHash).toBeUndefined();
+  });
+
+  function creationHandlers(createAdminCode: CreateAdminCode) {
+    return createAdminCodeHandlers({
+      authenticate: vi.fn().mockResolvedValue(true),
+      service: { createAdminCode, listAdminCodes: vi.fn() },
+    });
+  }
+
+  function creationRequest(body?: unknown): NextRequest {
+    return new NextRequest("https://nodo7.example/api/admin/demo-codes", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  }
+
+  it("issues a code for the credential type the admin selected", async () => {
+    const createAdminCode = vi.fn().mockResolvedValue({
+      code: "N7-ABCD-EFGH-JKLM-NPQR-STUV",
+      record: { ...record("pending"), credentialType: "activecode" as const },
+    });
+    const response = await creationHandlers(createAdminCode).POST(
+      creationRequest({ credentialType: "activecode" }),
+    );
+
+    expect(createAdminCode).toHaveBeenCalledWith("activecode");
+    expect((await response.json()).record.credentialType).toBe("activecode");
+  });
+
+  it.each([
+    ["an absent body", undefined],
+    ["an empty body", {}],
+    ["an unknown type", { credentialType: "magic-link" }],
+  ])("falls back to credentials for %s", async (_label, body) => {
+    const createAdminCode = vi.fn().mockResolvedValue({
+      code: "N7-ABCD-EFGH-JKLM-NPQR-STUV",
+      record: record("pending"),
+    });
+    await creationHandlers(createAdminCode).POST(creationRequest(body));
+    expect(createAdminCode).toHaveBeenCalledWith("line");
   });
 
   it("validates status, search, and the 200-row limit", async () => {

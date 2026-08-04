@@ -3,6 +3,7 @@ import type {
   AccessCodeWithRequest,
   AdminCodeFilters,
   DemoRepository,
+  DemoRequestRecord,
 } from "@/lib/demo/repository";
 import { createDemoSessionToken } from "@/lib/demo/session";
 import {
@@ -10,7 +11,12 @@ import {
   generateAccessCode,
   hashSecret,
 } from "@/lib/demo/secrets";
-import type { DemoSessionView } from "@/lib/demo/types";
+import type {
+  DemoCredentialType,
+  DemoPackageId,
+  DemoResultView,
+  DemoSessionView,
+} from "@/lib/demo/types";
 
 const ACTIVATION_WINDOW_MS = 15 * 60 * 1_000;
 const MAX_FAILED_ACTIVATIONS = 10;
@@ -28,7 +34,7 @@ export class DemoAccessError extends Error {
 }
 
 export interface DemoAccessService {
-  createAdminCode(): Promise<{
+  createAdminCode(credentialType: DemoCredentialType): Promise<{
     code: string;
     record: AccessCodeRecord;
   }>;
@@ -54,8 +60,40 @@ function remainingSeconds(deadline: string, now: Date): number {
   );
 }
 
-function packageName(packageId: 6 | 7): string {
+function packageName(packageId: DemoPackageId): string {
   return packageId === 7 ? "1 hora FULL" : "4 horas";
+}
+
+/**
+ * The encrypted column holds whichever secret the demo produced, so the access
+ * code's own type decides how to read it back.
+ */
+function resultView(
+  credentialType: DemoCredentialType,
+  request: DemoRequestRecord,
+): DemoResultView | null {
+  if (!request.password) return null;
+  const secret = decryptCredential(request.password);
+
+  if (credentialType === "activecode") {
+    return {
+      kind: "activecode",
+      code: secret,
+      packageId: request.packageId,
+      packageName: packageName(request.packageId),
+      expiresAt: null,
+    };
+  }
+
+  if (!request.username) return null;
+  return {
+    kind: "line",
+    username: request.username,
+    password: secret,
+    packageId: request.packageId,
+    packageName: packageName(request.packageId),
+    expiresAt: request.providerExpiresAt,
+  };
 }
 
 async function ignoreAuditFailure(operation: Promise<void>): Promise<void> {
@@ -70,11 +108,12 @@ export function createDemoService(
   repository: DemoRepository,
 ): DemoAccessService {
   return {
-    async createAdminCode() {
+    async createAdminCode(credentialType) {
       const code = generateAccessCode();
       const record = await repository.createCode({
         codeHash: hashSecret(code),
         displaySuffix: code.slice(-4),
+        credentialType,
       });
       return { code, record };
     },
@@ -141,24 +180,16 @@ export function createDemoService(
       }
 
       const request = record.request;
-      if (
-        record.status === "used" &&
-        request?.status === "ok" &&
-        request.username &&
-        request.password
-      ) {
-        return {
-          state: "result",
-          deadline: record.sessionDeadline,
-          remainingSeconds: seconds,
-          result: {
-            username: request.username,
-            password: decryptCredential(request.password),
-            packageId: request.packageId,
-            packageName: packageName(request.packageId),
-            expiresAt: request.providerExpiresAt,
-          },
-        };
+      if (record.status === "used" && request?.status === "ok") {
+        const result = resultView(record.credentialType, request);
+        if (result) {
+          return {
+            state: "result",
+            deadline: record.sessionDeadline,
+            remainingSeconds: seconds,
+            result,
+          };
+        }
       }
 
       return { state: "expired" };

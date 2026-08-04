@@ -109,6 +109,7 @@ describe("NODO7 demo portal", () => {
 
     resolveGeneration(
       jsonResponse({
+        kind: "line",
         username: "demo-user",
         password: "demo-pass",
         packageId: 7,
@@ -126,6 +127,7 @@ describe("NODO7 demo portal", () => {
       deadline: new Date(Date.now() + 300_000).toISOString(),
       remainingSeconds: 300,
       result: {
+        kind: "line",
         username: "restored-user",
         password: "restored-pass",
         packageId: 6,
@@ -137,6 +139,28 @@ describe("NODO7 demo portal", () => {
     render(<DemoPortal initialSession={result} />);
     expect(screen.getByText("restored-user")).toBeVisible();
     expect(screen.getByText("restored-pass")).toBeVisible();
+  });
+
+  it("shows the activation code alone, with no credential fields", () => {
+    const result: DemoSessionView = {
+      state: "result",
+      deadline: new Date(Date.now() + 300_000).toISOString(),
+      remainingSeconds: 300,
+      result: {
+        kind: "activecode",
+        code: "N7ABCD2345",
+        packageId: 7,
+        packageName: "1 hora FULL",
+        expiresAt: null,
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(result)));
+    render(<DemoPortal initialSession={result} />);
+
+    expect(screen.getByText("N7ABCD2345")).toBeVisible();
+    expect(screen.getByText(/código de activación/i)).toBeVisible();
+    expect(screen.queryByText(/^usuario$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^contraseña$/i)).not.toBeInTheDocument();
   });
 
   it("expires at 00:00 without extending the server deadline", async () => {

@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   AccessCodeStatus,
+  DemoCredentialType,
   DemoPackageId,
   DemoRequestStatus,
   EncryptedCredential,
@@ -27,6 +28,7 @@ export interface AccessCodeRecord {
   id: string;
   codeHash: string;
   displaySuffix: string;
+  credentialType: DemoCredentialType;
   status: AccessCodeStatus;
   sessionHash: string | null;
   generationAttemptCount: number;
@@ -61,6 +63,7 @@ export interface DemoRepository {
   createCode(input: {
     codeHash: string;
     displaySuffix: string;
+    credentialType: DemoCredentialType;
   }): Promise<AccessCodeRecord>;
   activateCode(input: {
     codeHash: string;
@@ -130,6 +133,7 @@ function mapAccessCode(row: DatabaseRow): AccessCodeRecord {
     id: row.id,
     codeHash: row.code_hash,
     displaySuffix: row.display_suffix,
+    credentialType: row.credential_type,
     status: row.status,
     sessionHash: row.session_hash,
     generationAttemptCount: row.generation_attempt_count,
@@ -155,12 +159,14 @@ export class SupabaseDemoRepository implements DemoRepository {
   async createCode(input: {
     codeHash: string;
     displaySuffix: string;
+    credentialType: DemoCredentialType;
   }): Promise<AccessCodeRecord> {
     const { data, error } = await this.client
       .from("demo_access_codes")
       .insert({
         code_hash: input.codeHash,
         display_suffix: input.displaySuffix,
+        credential_type: input.credentialType,
       })
       .select("*")
       .single();
@@ -292,7 +298,7 @@ export class SupabaseDemoRepository implements DemoRepository {
     sessionHash: string;
     requestId: string;
     externalId: string;
-    username: string;
+    username: string | null;
     password: EncryptedCredential;
     expiresAt: string | null;
   }): Promise<boolean> {

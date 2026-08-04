@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import { CodeGenerator } from "@/components/admin/CodeGenerator";
 import { CodeTable } from "@/components/admin/CodeTable";
 import type { AdminCodeView } from "@/lib/demo/admin-client";
-import type { AccessCodeStatus } from "@/lib/demo/types";
+import type {
+  AccessCodeStatus,
+  DemoCredentialType,
+} from "@/lib/demo/types";
 
 const STATUS_FILTERS = [
   { value: "all", label: "Todos" },
@@ -19,6 +22,8 @@ export function AdminConsole({ initialCodes }: { initialCodes: AdminCodeView[] }
   const [codes, setCodes] = useState(initialCodes);
   const [filter, setFilter] = useState<(typeof STATUS_FILTERS)[number]["value"]>("all");
   const [newCode, setNewCode] = useState<string | null>(null);
+  const [createdType, setCreatedType] = useState<DemoCredentialType | null>(null);
+  const [credentialType, setCredentialType] = useState<DemoCredentialType>("line");
   const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +37,15 @@ export function AdminConsole({ initialCodes }: { initialCodes: AdminCodeView[] }
     setCreating(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/demo-codes", { method: "POST" });
+      const response = await fetch("/api/admin/demo-codes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ credentialType }),
+      });
       const payload = (await response.json()) as { code?: string; record?: AdminCodeView; error?: string };
       if (!response.ok || !payload.code || !payload.record) throw new Error(payload.error ?? "No se pudo crear el código.");
       setNewCode(payload.code);
+      setCreatedType(payload.record.credentialType);
       setCodes((current) => [payload.record!, ...current]);
       setFilter("all");
     } catch (caught) {
@@ -69,7 +79,14 @@ export function AdminConsole({ initialCodes }: { initialCodes: AdminCodeView[] }
 
   return (
     <div className="n7-admin-console">
-      <CodeGenerator code={newCode} busy={creating} onCreate={createCode} />
+      <CodeGenerator
+        code={newCode}
+        createdType={createdType}
+        credentialType={credentialType}
+        busy={creating}
+        onCredentialTypeChange={setCredentialType}
+        onCreate={createCode}
+      />
       {error ? <p className="n7-admin-error" role="alert">{error}</p> : null}
       <nav className="n7-admin-filters" aria-label="Filtrar códigos por estado">
         {STATUS_FILTERS.map((item) => (

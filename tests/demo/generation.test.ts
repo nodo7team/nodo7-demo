@@ -32,6 +32,7 @@ class GenerationRepositoryDouble implements DemoGenerationRepository {
       id: "access-1",
       codeHash: hashSecret("N7-TEST-CODE"),
       displaySuffix: "CODE",
+      credentialType: "line",
       status: "active",
       sessionHash: hashSecret(TOKEN),
       generationAttemptCount: 0,
@@ -112,7 +113,7 @@ class GenerationRepositoryDouble implements DemoGenerationRepository {
     sessionHash: string;
     requestId: string;
     externalId: string;
-    username: string;
+    username: string | null;
     password: NonNullable<DemoRequestRecord["password"]>;
     expiresAt: string | null;
   }): Promise<boolean> {
@@ -142,6 +143,7 @@ class GenerationRepositoryDouble implements DemoGenerationRepository {
 function successfulProvider(): DemoProvider {
   return {
     createDemo: vi.fn().mockResolvedValue({
+      kind: "line",
       externalId: "provider-1",
       username: "nodo7-demo",
       password: "provider-secret",
@@ -171,12 +173,17 @@ describe("demo generation", () => {
         now: NOW,
       }),
     ).resolves.toMatchObject({
+      kind: "line",
       username: "nodo7-demo",
       password: "provider-secret",
       packageId: 7,
       packageName: "1 hora FULL",
     });
     expect(provider.createDemo).toHaveBeenCalledTimes(1);
+    expect(
+      (provider.createDemo as ReturnType<typeof vi.fn>).mock.calls[0][0]
+        .credentialType,
+    ).toBe("line");
     expect(repository.completedPassword?.ciphertext).not.toContain(
       "provider-secret",
     );
@@ -186,6 +193,39 @@ describe("demo generation", () => {
     expect(repository.access.status).toBe("used");
   });
 
+  it("stores an activation code as the secret and leaves the username empty", async () => {
+    repository.access.credentialType = "activecode";
+    const createDemo = vi.fn().mockResolvedValue({
+      kind: "activecode",
+      externalId: "892",
+      code: "N7ABCD2345",
+      expiresAt: null,
+      packageName: "1 hora FULL",
+    });
+    const generator = createDemoGenerator(repository, { createDemo });
+
+    await expect(
+      generator.generateDemoForSession({
+        token: TOKEN,
+        body: { name: "María", packageId: 7 },
+        now: NOW,
+      }),
+    ).resolves.toEqual({
+      kind: "activecode",
+      code: "N7ABCD2345",
+      packageId: 7,
+      packageName: "1 hora FULL",
+      expiresAt: null,
+    });
+
+    expect(createDemo.mock.calls[0][0].credentialType).toBe("activecode");
+    expect(repository.request?.username).toBeNull();
+    expect(repository.completedPassword?.ciphertext).not.toContain(
+      "N7ABCD2345",
+    );
+    expect(decryptCredential(repository.completedPassword!)).toBe("N7ABCD2345");
+  });
+
   it("reuses the same idempotency key after an explicit provider failure", async () => {
     const createDemo = vi
       .fn()
@@ -193,6 +233,7 @@ describe("demo generation", () => {
         new DemoProviderError("PROVIDER_REJECTED", "explicit"),
       )
       .mockResolvedValueOnce({
+        kind: "line",
         externalId: "provider-1",
         username: "nodo7-demo",
         password: "provider-secret",
@@ -306,6 +347,7 @@ describe("demo generation", () => {
       getDemoProvider().createDemo({
         name: "María",
         packageId: 7,
+        credentialType: "line",
         idempotencyKey: "00000000-0000-4000-8000-000000000001",
       }),
     ).rejects.toMatchObject({ code: "PROVIDER_NOT_CONFIGURED" });

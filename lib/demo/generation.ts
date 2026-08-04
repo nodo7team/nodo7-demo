@@ -34,7 +34,7 @@ export interface DemoGenerationRepository {
     sessionHash: string;
     requestId: string;
     externalId: string;
-    username: string;
+    username: string | null;
     password: EncryptedCredential;
     expiresAt: string | null;
   }): Promise<boolean>;
@@ -132,6 +132,7 @@ export function createDemoGenerator(
         providerResult = await provider.createDemo({
           name: request.name,
           packageId: request.packageId,
+          credentialType: access.credentialType,
           idempotencyKey: request.providerIdempotencyKey,
         });
       } catch (error) {
@@ -151,15 +152,20 @@ export function createDemoGenerator(
         );
       }
 
-      const encryptedPassword = encryptCredential(providerResult.password);
+      const encryptedSecret = encryptCredential(
+        providerResult.kind === "line"
+          ? providerResult.password
+          : providerResult.code,
+      );
       let completed = false;
       try {
         completed = await repository.completeGeneration({
           sessionHash,
           requestId: request.id,
           externalId: providerResult.externalId,
-          username: providerResult.username,
-          password: encryptedPassword,
+          username:
+            providerResult.kind === "line" ? providerResult.username : null,
+          password: encryptedSecret,
           expiresAt: providerResult.expiresAt,
         });
       } catch {
@@ -187,7 +193,18 @@ export function createDemoGenerator(
         throw new DemoGenerationError("OUTCOME_UNKNOWN", 502);
       }
 
+      if (providerResult.kind === "activecode") {
+        return {
+          kind: "activecode",
+          code: providerResult.code,
+          packageId: request.packageId,
+          packageName: providerResult.packageName,
+          expiresAt: null,
+        };
+      }
+
       return {
+        kind: "line",
         username: providerResult.username,
         password: providerResult.password,
         packageId: request.packageId,

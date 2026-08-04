@@ -6,7 +6,10 @@ import {
   createDemoService,
   type DemoAccessService,
 } from "@/lib/demo/service";
-import type { AccessCodeStatus } from "@/lib/demo/types";
+import type {
+  AccessCodeStatus,
+  DemoCredentialType,
+} from "@/lib/demo/types";
 
 const VALID_STATUSES = new Set<AccessCodeStatus>([
   "pending",
@@ -15,6 +18,28 @@ const VALID_STATUSES = new Set<AccessCodeStatus>([
   "expired",
   "revoked",
 ]);
+
+const VALID_CREDENTIAL_TYPES = new Set<DemoCredentialType>([
+  "line",
+  "activecode",
+]);
+
+/** An unreadable or unknown selection falls back to the long-standing default. */
+async function requestedCredentialType(
+  request?: NextRequest,
+): Promise<DemoCredentialType> {
+  try {
+    const body = await request?.json();
+    const requested = (body as { credentialType?: unknown } | null)
+      ?.credentialType;
+    return typeof requested === "string" &&
+      VALID_CREDENTIAL_TYPES.has(requested as DemoCredentialType)
+      ? (requested as DemoCredentialType)
+      : "line";
+  } catch {
+    return "line";
+  }
+}
 
 interface AdminCodeDependencies {
   authenticate(): Promise<boolean>;
@@ -39,11 +64,13 @@ export function createAdminCodeHandlers(dependencies: AdminCodeDependencies) {
       return NextResponse.json({ codes: records.map(toAdminCodeView) });
     },
 
-    async POST(_request?: NextRequest) {
+    async POST(request?: NextRequest) {
       if (!(await dependencies.authenticate())) {
         return NextResponse.json({ error: "No autorizado." }, { status: 401 });
       }
-      const created = await dependencies.service.createAdminCode();
+      const created = await dependencies.service.createAdminCode(
+        await requestedCredentialType(request),
+      );
       return NextResponse.json(
         { code: created.code, record: toAdminCodeView({ ...created.record, request: null }) },
         { status: 201 },
