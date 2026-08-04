@@ -5,6 +5,7 @@ import {
   type DemoProviderInput,
   type DemoProviderResult,
 } from "@/lib/demo/provider";
+import type { DemoCredentialType, DemoPackageId } from "@/lib/demo/types";
 
 interface ClickTvProviderOptions {
   baseUrl: string;
@@ -17,7 +18,25 @@ type ProviderPayload = Record<string, any>;
 const CREDENTIAL_ALPHABET =
   "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
-function packageName(packageId: 6 | 7): string {
+const ACTIVATION_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/**
+ * Rejections that always mean the panel created nothing, so the caller may fail
+ * cleanly. Anything outside this set is only safe to treat as explicit when the
+ * action has a dedicated duplicate status to distinguish it.
+ */
+const CONFIGURATION_REJECTIONS = new Set([
+  "STATUS_INVALID_PACKAGE",
+  "STATUS_NO_TRIALS",
+  "STATUS_INSUFFICIENT_CREDITS",
+  "STATUS_NO_PERMISSIONS",
+  "STATUS_INVALID_TYPE",
+  "STATUS_INVALID_DATA",
+  "STATUS_INVALID_USERNAME",
+  "STATUS_INVALID_PASSWORD",
+]);
+
+function packageName(packageId: DemoPackageId): string {
   return packageId === 7 ? "1 hora FULL" : "4 horas";
 }
 
@@ -34,7 +53,7 @@ function normalizeFirstName(name: string): string {
   const first = name.trim().split(/\s+/)[0] ?? "";
   const normalized = first
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\p{Mn}/gu, "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "")
     .slice(0, 12);
@@ -57,6 +76,39 @@ function deterministicCredentials(input: DemoProviderInput) {
   };
 }
 
+/**
+ * Derived from the idempotency key alone, so a retry submits the same code and
+ * the panel rejects the duplicate instead of charging a second demo.
+ */
+function deterministicActivationCode(idempotencyKey: string): string {
+  const digest = hashSecret(`activecode:${idempotencyKey}`);
+  const characters = Array.from({ length: 8 }, (_, index) => {
+    const byte = Number.parseInt(digest.slice(index * 2, index * 2 + 2), 16);
+    return ACTIVATION_CODE_ALPHABET[byte % ACTIVATION_CODE_ALPHABET.length];
+  }).join("");
+  return `N7${characters}`;
+}
+
+function rejectionFor(
+  status: unknown,
+  credentialType: DemoCredentialType,
+): DemoProviderError {
+  const value = typeof status === "string" ? status : "STATUS_UNKNOWN";
+
+  if (credentialType === "line") {
+    return value === "STATUS_EXISTS_USERNAME"
+      ? new DemoProviderError("PROVIDER_USERNAME_EXISTS", "ambiguous")
+      : new DemoProviderError("PROVIDER_REJECTED", "explicit");
+  }
+
+  // create_activecode has no duplicate-code status, so any rejection outside the
+  // configuration set may mean our own deterministic code already exists from an
+  // earlier call that did reach the panel.
+  return CONFIGURATION_REJECTIONS.has(value)
+    ? new DemoProviderError("PROVIDER_REJECTED", "explicit")
+    : new DemoProviderError("PROVIDER_CODE_UNCERTAIN", "ambiguous");
+}
+
 class ClickTvDemoProvider implements DemoProvider {
   private readonly fetchImpl: typeof fetch;
 
@@ -65,21 +117,31 @@ class ClickTvDemoProvider implements DemoProvider {
   }
 
   async createDemo(input: DemoProviderInput): Promise<DemoProviderResult> {
-    const credentials = deterministicCredentials(input);
-    const url = new URL(this.options.baseUrl);
+    const activation = input.credentialType === "activecode";
+    const credentials = activation ? null : deterministicCredentials(input);
+    const activationCode = activation
+      ? deterministicActivationCode(input.idempotencyKey)
+      : null;
+
     const form = new URLSearchParams({
       api_key: this.options.apiKey,
-      action: "create_line",
+      action: activation ? "create_activecode" : "create_line",
       package: String(input.packageId),
       trial: "1",
       is_isplock: "0",
-      username: credentials.username,
-      password: credentials.password,
+      reseller_notes: input.name,
     });
+    if (credentials) {
+      form.set("username", credentials.username);
+      form.set("password", credentials.password);
+    }
+    if (activationCode) {
+      form.set("code", activationCode);
+    }
 
     let response: Response;
     try {
-      response = await this.fetchImpl(url.toString(), {
+      response = await this.fetchImpl(new URL(this.options.baseUrl).toString(), {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: form.toString(),
@@ -103,11 +165,7 @@ class ClickTvDemoProvider implements DemoProvider {
       throw new DemoProviderError("PROVIDER_INVALID_RESPONSE", "ambiguous");
     }
     if (payload.status !== "STATUS_SUCCESS") {
-      const usernameExists = payload.status === "STATUS_EXISTS_USERNAME";
-      throw new DemoProviderError(
-        usernameExists ? "PROVIDER_USERNAME_EXISTS" : "PROVIDER_REJECTED",
-        usernameExists ? "ambiguous" : "explicit",
-      );
+      throw rejectionFor(payload.status, input.credentialType);
     }
     if (
       !payload.data ||
@@ -118,10 +176,21 @@ class ClickTvDemoProvider implements DemoProvider {
     }
 
     const data = payload.data;
+    if (activationCode) {
+      return {
+        kind: "activecode",
+        externalId: String(data.id ?? activationCode),
+        code: String(data.code ?? activationCode),
+        expiresAt: null,
+        packageName: packageName(input.packageId),
+      };
+    }
+
     return {
-      externalId: String(data.id ?? credentials.username),
-      username: String(data.username ?? credentials.username),
-      password: String(data.password ?? credentials.password),
+      kind: "line",
+      externalId: String(data.id ?? credentials!.username),
+      username: String(data.username ?? credentials!.username),
+      password: String(data.password ?? credentials!.password),
       expiresAt: parseExpiration(data.exp_date),
       packageName: packageName(input.packageId),
     };

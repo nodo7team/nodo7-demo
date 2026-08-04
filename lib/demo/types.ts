@@ -9,6 +9,9 @@ export type DemoRequestStatus = "creating" | "error" | "ambiguous" | "ok";
 
 export type DemoPackageId = 6 | 7;
 
+/** What the visitor receives: a username/password pair, or an activation code. */
+export type DemoCredentialType = "line" | "activecode";
+
 export interface EncryptedCredential {
   ciphertext: string;
   iv: string;

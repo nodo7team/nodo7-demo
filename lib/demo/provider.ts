@@ -1,19 +1,34 @@
 import { createClickTvDemoProvider } from "@/lib/demo/providers/clicktv";
-import type { DemoPackageId } from "@/lib/demo/types";
+import type { DemoCredentialType, DemoPackageId } from "@/lib/demo/types";
 
 export interface DemoProviderInput {
   name: string;
   packageId: DemoPackageId;
+  credentialType: DemoCredentialType;
   idempotencyKey: string;
 }
 
-export interface DemoProviderResult {
-  externalId: string;
-  username: string;
-  password: string;
-  expiresAt: string | null;
-  packageName: string;
-}
+/**
+ * The panel exposes two sibling operations with different payloads, so the
+ * result is a union: an activation code has no username and never carries an
+ * expiration, because the line is only created when the code is redeemed.
+ */
+export type DemoProviderResult =
+  | {
+      kind: "line";
+      externalId: string;
+      username: string;
+      password: string;
+      expiresAt: string | null;
+      packageName: string;
+    }
+  | {
+      kind: "activecode";
+      externalId: string;
+      code: string;
+      expiresAt: null;
+      packageName: string;
+    };
 
 export interface DemoProvider {
   createDemo(input: DemoProviderInput): Promise<DemoProviderResult>;
