@@ -60,6 +60,20 @@ Endpoints usados:
 
 La vinculación por QR se hace en el panel de waclient, no en NODO7. Construir una pantalla de QR propia queda fuera de alcance.
 
+## Huecos en la documentación del proveedor
+
+Revisadas las 156 páginas de documentación (140 endpoints de Web API en 16 grupos), faltan tres cosas que condicionan el diseño:
+
+1. **Ninguna respuesta de error está documentada.** Los ejemplos muestran solo el caso exitoso. No se sabe qué devuelve `/send` con la instancia caída, ni el formato del error, ni el código HTTP. La sección de Cloud API sí documenta sus errores; la Web API no.
+2. **`set_webhook` no documenta los eventos** que entrega ni su estructura.
+3. **No hay límites de tasa, cuotas ni política de reintentos** en ninguna página.
+
+Consecuencias:
+
+- El adaptador trata como fallo **todo lo que no sea** `status: "success"`, y parsea a la defensiva.
+- `delivery_status = 'sent'` significa **"la API aceptó el mensaje"**, no "el cliente lo recibió". Sin webhooks documentados no hay forma de confirmar la entrega.
+- Los límites de envío hay que preguntárselos a waclient antes de depender del canal.
+
 ## Base de datos
 
 ```sql
@@ -100,7 +114,11 @@ WHATSAPP_HIDE_CREDENTIALS=false   → se envía y se muestra
 WHATSAPP_HIDE_CREDENTIALS=true    → se muestra solo si el envío falló
 ```
 
-Arranca en `false`. La Web API puede responder `success` sin que el mensaje llegue, así que conviene confirmar entregas reales durante unos días antes de cortar la pantalla. El cambio se hace en Vercel, sin redesplegar.
+Arranca en `false`, y conviene que se quede ahí un tiempo largo.
+
+El motivo es el hueco 2 de arriba: `sent` solo dice que la API aceptó el mensaje. La Web API puede responder `success` sin que el mensaje llegue nunca, y sin webhooks documentados no hay manera de detectarlo desde el sistema. Pasar a `true` significa cortar la pantalla confiando en una señal que no confirma entrega.
+
+Antes de activarlo, NODO7 debería comprobar a mano, sobre demos reales, que los mensajes efectivamente llegan. El cambio se hace en Vercel, sin redesplegar, y se revierte igual de rápido si aparecen quejas.
 
 ## Variables de entorno
 
