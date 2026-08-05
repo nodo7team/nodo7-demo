@@ -5,7 +5,9 @@ import type {
 import type {
   AccessCodeStatus,
   DemoCredentialType,
+  DemoDeliveryStatus,
 } from "@/lib/demo/types";
+import { maskPhone } from "@/lib/whatsapp/phone";
 
 export interface AdminRequestView {
   name: string;
@@ -13,6 +15,8 @@ export interface AdminRequestView {
   status: DemoRequestRecord["status"];
   attemptCount: number;
   username: string | null;
+  maskedPhone: string | null;
+  deliveryStatus: DemoDeliveryStatus;
   providerExpiresAt: string | null;
   errorCode: string | null;
 }
@@ -54,6 +58,8 @@ export function toAdminCodeView(record: AccessCodeWithRequest): AdminCodeView {
           status: record.request.status,
           attemptCount: record.request.attemptCount,
           username: record.request.username,
+          maskedPhone: maskPhone(record.request.phone),
+          deliveryStatus: record.request.deliveryStatus,
           providerExpiresAt: record.request.providerExpiresAt,
           errorCode: record.request.errorCode,
         }

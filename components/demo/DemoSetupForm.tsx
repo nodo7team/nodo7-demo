@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Clock3, Film, Radio, Sparkles } from "lucide-react";
 import type { DemoPackageId } from "@/lib/demo/types";
+import {
+  COUNTRY_CODES,
+  countryFlag,
+  findCountry,
+  normalizePhone,
+} from "@/lib/whatsapp/phone";
 
 interface DemoSetupFormProps {
   busy: boolean;
   error: string | null;
-  onSubmit(input: { name: string; packageId: DemoPackageId }): Promise<void>;
+  onSubmit(input: {
+    name: string;
+    packageId: DemoPackageId;
+    countryIso: string;
+    phone: string;
+  }): Promise<void>;
 }
 
 const PACKAGES = [
@@ -17,14 +28,24 @@ const PACKAGES = [
 
 export function DemoSetupForm({ busy, error, onSubmit }: DemoSetupFormProps) {
   const [name, setName] = useState("");
+  const [countryIso, setCountryIso] = useState("US");
+  const [phone, setPhone] = useState("");
   const [packageId, setPackageId] = useState<DemoPackageId | null>(null);
+
+  const dial = findCountry(countryIso)?.dial ?? "1";
+  const normalized = useMemo(
+    () => normalizePhone(dial, phone),
+    [dial, phone],
+  );
 
   return (
     <form
       className="n7-form n7-setup-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (packageId) void onSubmit({ name: name.trim(), packageId });
+        if (packageId && normalized) {
+          void onSubmit({ name: name.trim(), packageId, countryIso, phone });
+        }
       }}
     >
       <div className="n7-field">
@@ -40,6 +61,39 @@ export function DemoSetupForm({ busy, error, onSubmit }: DemoSetupFormProps) {
           disabled={busy}
           required
         />
+      </div>
+
+      <div className="n7-field">
+        <label htmlFor="visitor-phone">WhatsApp</label>
+        <div className="n7-phone-row">
+          <select
+            aria-label="País"
+            value={countryIso}
+            onChange={(event) => setCountryIso(event.target.value)}
+            disabled={busy}
+          >
+            {COUNTRY_CODES.map((country) => (
+              <option key={country.iso} value={country.iso}>
+                {countryFlag(country.iso)} +{country.dial} · {country.name}
+              </option>
+            ))}
+          </select>
+          <input
+            id="visitor-phone"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="Tu número"
+            inputMode="tel"
+            autoComplete="tel-national"
+            disabled={busy}
+            required
+          />
+        </div>
+        <small className="n7-phone-preview">
+          {normalized
+            ? `Te enviaremos las credenciales a +${dial} ${normalized.slice(dial.length)}`
+            : "Escribe tu número sin el código de país."}
+        </small>
       </div>
 
       <fieldset className="n7-package-fieldset" disabled={busy}>
@@ -73,7 +127,7 @@ export function DemoSetupForm({ busy, error, onSubmit }: DemoSetupFormProps) {
       <button
         className="n7-primary-button"
         type="submit"
-        disabled={busy || name.trim().length < 2 || packageId === null}
+        disabled={busy || name.trim().length < 2 || packageId === null || !normalized}
       >
         <span>{busy ? "Generando…" : "Generar mi demo"}</span>
         <Sparkles aria-hidden="true" size={19} />

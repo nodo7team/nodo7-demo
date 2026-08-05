@@ -47,7 +47,7 @@ describe("NODO7 demo portal", () => {
     expect(screen.getByText(/10:00|09:59/)).toBeVisible();
   });
 
-  it("requires a name and one package before generating", async () => {
+  it("requires a name, a reachable phone and one package before generating", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(jsonResponse({ state: "setup" })),
@@ -67,6 +67,14 @@ describe("NODO7 demo portal", () => {
     await user.type(screen.getByLabelText(/nombre/i), "María");
     expect(button).toBeDisabled();
     await user.click(screen.getByRole("radio", { name: /1 hora full/i }));
+    expect(button).toBeDisabled();
+
+    // Too short to be a real number, so it must not unlock the button.
+    await user.type(screen.getByLabelText(/whatsapp/i), "123");
+    expect(button).toBeDisabled();
+
+    await user.clear(screen.getByLabelText(/whatsapp/i));
+    await user.type(screen.getByLabelText(/whatsapp/i), "3465551234");
     expect(button).toBeEnabled();
   });
 
@@ -101,6 +109,7 @@ describe("NODO7 demo portal", () => {
       />,
     );
     await user.type(screen.getByLabelText(/nombre/i), "María");
+    await user.type(screen.getByLabelText(/whatsapp/i), "3465551234");
     await user.click(screen.getByRole("radio", { name: /1 hora full/i }));
     const button = screen.getByRole("button", { name: /generar mi demo/i });
     await user.click(button);
@@ -115,10 +124,106 @@ describe("NODO7 demo portal", () => {
         packageId: 7,
         packageName: "1 hora FULL",
         expiresAt: null,
+        delivery: { status: "failed", maskedPhone: "+1 346…1234" },
       }),
     );
     expect(await screen.findByText("demo-user")).toBeVisible();
     expect(screen.getByText("demo-pass")).toBeVisible();
+  });
+
+  it("sends the country and the typed number when generating", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes("/api/demo/generate")) {
+        return Promise.resolve(
+          jsonResponse({
+            kind: "line",
+            username: "demo-user",
+            password: "demo-pass",
+            packageId: 7,
+            packageName: "1 hora FULL",
+            expiresAt: null,
+            delivery: { status: "sent", maskedPhone: "+1 346…1234" },
+          }),
+        );
+      }
+      return Promise.resolve(
+        jsonResponse({
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(
+      <DemoPortal
+        initialSession={{
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+        }}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/nombre/i), "María");
+    await user.type(screen.getByLabelText(/whatsapp/i), "(346) 555-1234");
+    await user.click(screen.getByRole("radio", { name: /1 hora full/i }));
+    await user.click(screen.getByRole("button", { name: /generar mi demo/i }));
+
+    const call = fetchMock.mock.calls.find((c) =>
+      String(c[0]).includes("/api/demo/generate"),
+    );
+    expect(JSON.parse(String(call![1].body))).toEqual({
+      name: "María",
+      packageId: 7,
+      countryIso: "US",
+      phone: "(346) 555-1234",
+    });
+    expect(await screen.findByText(/te lo enviamos/i)).toBeVisible();
+  });
+
+  it("hides the credentials when they were only delivered by WhatsApp", () => {
+    const result: DemoSessionView = {
+      state: "result",
+      deadline: new Date(Date.now() + 300_000).toISOString(),
+      remainingSeconds: 300,
+      result: {
+        kind: "delivered",
+        packageId: 7,
+        packageName: "1 hora FULL",
+        expiresAt: null,
+        delivery: { status: "sent", maskedPhone: "+1 346…1234" },
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(result)));
+    render(<DemoPortal initialSession={result} />);
+
+    expect(screen.getByText(/\+1 346…1234/)).toBeVisible();
+    expect(screen.queryByText(/^usuario$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^contraseña$/i)).not.toBeInTheDocument();
+  });
+
+  it("warns that the message did not go through when delivery failed", () => {
+    const result: DemoSessionView = {
+      state: "result",
+      deadline: new Date(Date.now() + 300_000).toISOString(),
+      remainingSeconds: 300,
+      result: {
+        kind: "line",
+        username: "demo-user",
+        password: "demo-pass",
+        packageId: 7,
+        packageName: "1 hora FULL",
+        expiresAt: null,
+        delivery: { status: "failed", maskedPhone: "+1 346…1234" },
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(result)));
+    render(<DemoPortal initialSession={result} />);
+
+    expect(screen.getByText(/no pudimos enviarte/i)).toBeVisible();
+    expect(screen.getByText("demo-user")).toBeVisible();
   });
 
   it("restores a completed result after reload", () => {
@@ -133,6 +238,7 @@ describe("NODO7 demo portal", () => {
         packageId: 6,
         packageName: "4 horas",
         expiresAt: null,
+        delivery: { status: "failed", maskedPhone: "+1 346…1234" },
       },
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(result)));
@@ -152,6 +258,7 @@ describe("NODO7 demo portal", () => {
         packageId: 7,
         packageName: "1 hora FULL",
         expiresAt: null,
+        delivery: { status: "failed", maskedPhone: "+1 346…1234" },
       },
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(result)));

@@ -12,6 +12,17 @@ const STATUS_LABELS: Record<AdminCodeView["status"], string> = {
   revoked: "Revocado",
 };
 
+/** "Enviado" is what the panel accepted, not what the phone received. */
+const DELIVERY_LABELS: Record<
+  NonNullable<AdminCodeView["request"]>["deliveryStatus"],
+  string
+> = {
+  pending: "Sin enviar",
+  sent: "Enviado",
+  failed: "Falló el envío",
+  disabled: "WhatsApp apagado",
+};
+
 function date(value: string | null): string {
   if (!value) return "—";
   return new Intl.DateTimeFormat("es-AR", {
@@ -40,7 +51,7 @@ export function CodeTable({ codes, busyId, onRevoke, onReplacement, onRefresh }:
       ) : (
         <div className="n7-admin-table-scroll">
           <table>
-            <thead><tr><th>Pase</th><th>Entrega</th><th>Estado</th><th>Visitante / demo</th><th>Ventana</th><th>Red</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Pase</th><th>Entrega</th><th>Estado</th><th>Visitante / demo</th><th>WhatsApp</th><th>Ventana</th><th>Red</th><th>Acción</th></tr></thead>
             <tbody>
               {codes.map((code) => {
                 const revocable = code.status === "pending" || code.status === "active";
@@ -56,6 +67,12 @@ export function CodeTable({ codes, busyId, onRevoke, onReplacement, onRefresh }:
                     <td>
                       <strong>{code.request?.name ?? "Sin activar"}</strong>
                       <small>{code.request ? `${code.request.packageId === 7 ? "1 hora FULL" : "4 horas"} · ${code.request.username ?? code.request.status}` : "—"}</small>
+                    </td>
+                    <td>
+                      <strong>{code.request?.maskedPhone ?? "—"}</strong>
+                      <small>
+                        {code.request ? DELIVERY_LABELS[code.request.deliveryStatus] : "—"}
+                      </small>
                     </td>
                     <td><strong>{date(code.activatedAt)}</strong><small>{code.sessionDeadline ? `hasta ${date(code.sessionDeadline)}` : "sin reloj"}</small></td>
                     <td><strong>{code.activationIp ?? "—"}</strong><small>{code.generationAttemptCount}/3 envíos</small></td>

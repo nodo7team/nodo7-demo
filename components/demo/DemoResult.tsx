@@ -1,16 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, ShieldCheck } from "lucide-react";
+import { Check, Copy, MessageCircle, ShieldCheck, TriangleAlert } from "lucide-react";
 import type { DemoResultView } from "@/lib/demo/types";
+
+function DeliveryNotice({ result }: { result: DemoResultView }) {
+  const { status, maskedPhone } = result.delivery;
+
+  if (status === "sent") {
+    return (
+      <p className="n7-delivery n7-delivery-sent" role="status">
+        <MessageCircle aria-hidden="true" size={17} />
+        <span>Te lo enviamos por WhatsApp{maskedPhone ? ` a ${maskedPhone}` : ""}.</span>
+      </p>
+    );
+  }
+
+  if (status === "failed") {
+    return (
+      <p className="n7-delivery n7-delivery-failed" role="alert">
+        <TriangleAlert aria-hidden="true" size={17} />
+        <span>No pudimos enviarte el WhatsApp. Guarda los datos desde esta pantalla.</span>
+      </p>
+    );
+  }
+
+  return null;
+}
 
 export function DemoResult({ result }: { result: DemoResultView }) {
   const [copied, setCopied] = useState<string | null>(null);
 
-  async function copy(kind: string, value: string) {
+  async function copy(field: string, value: string) {
     try {
       await navigator.clipboard.writeText(value);
-      setCopied(kind);
+      setCopied(field);
       window.setTimeout(() => setCopied(null), 1_500);
     } catch {
       setCopied(null);
@@ -24,7 +48,9 @@ export function DemoResult({ result }: { result: DemoResultView }) {
         <div><p>DEMO CONFIRMADA</p><h2>Tu acceso está listo</h2></div>
       </div>
 
-      {result.kind === "activecode" ? (
+      <DeliveryNotice result={result} />
+
+      {result.kind === "delivered" ? null : result.kind === "activecode" ? (
         <dl className="n7-credentials n7-credentials-single">
           <div>
             <dt>Código de activación</dt><dd>{result.code}</dd>
@@ -60,7 +86,9 @@ export function DemoResult({ result }: { result: DemoResultView }) {
               : "Duración definida por el proveedor"}
         </span>
       </div>
-      <p className="n7-result-warning">Guarda los datos ahora: dejarán de mostrarse cuando termine el reloj.</p>
+      {result.kind === "delivered" ? null : (
+        <p className="n7-result-warning">Guarda los datos ahora: dejarán de mostrarse cuando termine el reloj.</p>
+      )}
     </div>
   );
 }

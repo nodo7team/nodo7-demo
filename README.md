@@ -49,7 +49,7 @@ npm.cmd run dev
 ## Supabase sin Docker
 
 1. Crea un proyecto nuevo en la cuenta de NODO7.
-2. En el SQL Editor, ejecuta `supabase/migrations/0001_nodo7_demo_access.sql` y luego `supabase/migrations/0002_demo_credential_type.sql`.
+2. En el SQL Editor, ejecuta las migraciones en orden: `0001_nodo7_demo_access.sql`, `0002_demo_credential_type.sql` y `0003_demo_whatsapp_delivery.sql`.
 3. Copia la URL del proyecto a `NEXT_PUBLIC_SUPABASE_URL`.
 4. Copia la clave `service_role` a `SUPABASE_SERVICE_ROLE_KEY` únicamente en `.env.local` y en las variables privadas de Vercel.
 
@@ -61,6 +61,21 @@ npx.cmd supabase db push
 ```
 
 No publiques la clave `service_role`, no la envíes por chat y no la subas a Git.
+
+## Entrega por WhatsApp
+
+El portal pide país y teléfono al visitante. Antes de crear la demo valida que el número exista en WhatsApp: si no existe, no se genera nada. Ese orden es lo que obliga a dar un número real, porque validar después caería en el respaldo y dejaría pasar cualquier número inventado.
+
+Después de generar, las credenciales se envían por WhatsApp. **El envío nunca hace fallar la demo**: si el mensaje no sale, las credenciales quedan visibles en pantalla y el panel registra el fallo.
+
+Se entrega con `WHATSAPP_PROVIDER=disabled`, que conserva el comportamiento anterior. Para encenderlo hace falta una cuenta de waclient con una instancia ya vinculada por QR desde su panel.
+
+Dos cosas que conviene saber antes de confiar en el canal:
+
+- Es automatización de WhatsApp Web, no la API oficial de Meta. El número queda expuesto a bloqueo y la sesión puede caerse.
+- Un envío exitoso responde `PENDING`, o sea encolado. **Nunca se puede confirmar una entrega**, así que `WHATSAPP_HIDE_CREDENTIALS` debe quedar en `false` hasta comprobar a mano que los mensajes llegan.
+
+`scripts/probe-whatsapp.ts` consulta el estado de la cuenta sin enviar nada.
 
 ## Proveedor de demos
 

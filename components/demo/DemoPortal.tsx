@@ -62,7 +62,12 @@ export function DemoPortal({ initialSession }: { initialSession: DemoSessionView
     }
   }
 
-  async function generate(input: { name: string; packageId: DemoPackageId }) {
+  async function generate(input: {
+    name: string;
+    packageId: DemoPackageId;
+    countryIso: string;
+    phone: string;
+  }) {
     if (state.kind !== "setup") return;
     setBusy(true);
     setError(null);

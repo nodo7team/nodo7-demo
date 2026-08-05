@@ -450,6 +450,16 @@
 .n7-credentials button:focus-visible { outline: 3px solid #6a9e20; outline-offset: 3px; }
 
 .n7-setup-form { margin-top: 1.5rem; }
+.n7-phone-row { display: grid; grid-template-columns: minmax(0, 13rem) 1fr; gap: 0.5rem; }
+.n7-phone-row select { min-width: 0; padding: 0.75rem 0.6rem; background: #fbfdf7; border: 1px solid #bdcbb5; font: inherit; font-size: 0.82rem; }
+.n7-phone-row select:focus-visible,
+.n7-phone-row input:focus-visible { outline: 3px solid rgb(106 158 32 / 0.38); outline-offset: 2px; }
+.n7-phone-preview { display: block; margin-top: 0.4rem; color: var(--n7-muted); font-size: 0.7rem; }
+
+.n7-delivery { display: flex; gap: 0.55rem; align-items: flex-start; margin: 0; padding: 0.8rem 0.9rem; font-size: 0.76rem; line-height: 1.5; }
+.n7-delivery svg { flex: 0 0 auto; margin-top: 0.1rem; }
+.n7-delivery-sent { color: #234a15; background: #eaf9cd; border-left: 3px solid #6d9e29; }
+.n7-delivery-failed { color: #7a4a12; background: #fdf1dc; border-left: 3px solid #d08a25; }
 .n7-package-fieldset { margin: 0; padding: 0; border: 0; }
 .n7-package-fieldset legend { margin-bottom: 0.65rem; }
 .n7-package-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
