@@ -57,9 +57,16 @@ where (
 
 ## Generación del código de activación
 
-Determinista desde `idempotencyKey`, igual que usuario y contraseña. Un reintento pide el mismo código, así que el proveedor lo rechaza por duplicado en vez de crear un segundo demo y cobrar dos créditos.
+**El código lo genera ClickTV.** El parámetro `code` es opcional y no se envía.
 
-Formato `N7` + 8 caracteres del alfabeto sin confusiones. Sin guiones, para distinguirlo del código de acceso, que sí los tiene.
+La primera versión lo derivaba del `idempotencyKey`, para que un reintento pidiera el mismo código y el panel lo rechazara por duplicado. Se descartó por dos motivos:
+
+- **El visitante escribe ese código en el control remoto de un televisor.** Nuestro formato mezclaba letras y números; el panel conoce el que sus propias apps esperan y el que es cómodo de marcar.
+- La protección contra duplicados valía cuando se creía que cada demo costaba créditos. No cuesta nada: un reintento ambiguo deja un código huérfano en el panel, no una pérdida.
+
+Como consecuencia, nada identifica un intento anterior desde nuestro lado. Por eso cualquier rechazo que no sea un error de configuración se clasifica como **ambiguo**: un reintento crearía un segundo código.
+
+Si la respuesta llega sin `code`, se trata como ambigua. Un código vacío deja una demo inservible y no se sabe si se creó.
 
 El nombre del visitante viaja en `reseller_notes` en **ambos** tipos. En `line` el nombre ya va dentro del usuario; en `activecode` no hay nada más que lo identifique en el panel del proveedor.
 

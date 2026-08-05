@@ -18,8 +18,6 @@ type ProviderPayload = Record<string, any>;
 const CREDENTIAL_ALPHABET =
   "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
-const ACTIVATION_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
 /**
  * Rejections that always mean the panel created nothing, so the caller may fail
  * cleanly. Anything outside this set is only safe to treat as explicit when the
@@ -76,19 +74,6 @@ function deterministicCredentials(input: DemoProviderInput) {
   };
 }
 
-/**
- * Derived from the idempotency key alone, so a retry submits the same code and
- * the panel rejects the duplicate instead of charging a second demo.
- */
-function deterministicActivationCode(idempotencyKey: string): string {
-  const digest = hashSecret(`activecode:${idempotencyKey}`);
-  const characters = Array.from({ length: 8 }, (_, index) => {
-    const byte = Number.parseInt(digest.slice(index * 2, index * 2 + 2), 16);
-    return ACTIVATION_CODE_ALPHABET[byte % ACTIVATION_CODE_ALPHABET.length];
-  }).join("");
-  return `N7${characters}`;
-}
-
 function rejectionFor(
   status: unknown,
   credentialType: DemoCredentialType,
@@ -101,9 +86,9 @@ function rejectionFor(
       : new DemoProviderError("PROVIDER_REJECTED", "explicit");
   }
 
-  // create_activecode has no duplicate-code status, so any rejection outside the
-  // configuration set may mean our own deterministic code already exists from an
-  // earlier call that did reach the panel.
+  // The panel issues its own activation code, so nothing on our side identifies
+  // an earlier attempt. Any rejection outside the configuration set may hide a
+  // code that was already created, and a retry would create a second one.
   return CONFIGURATION_REJECTIONS.has(value)
     ? new DemoProviderError("PROVIDER_REJECTED", "explicit")
     : new DemoProviderError("PROVIDER_CODE_UNCERTAIN", "ambiguous");
@@ -119,9 +104,6 @@ class ClickTvDemoProvider implements DemoProvider {
   async createDemo(input: DemoProviderInput): Promise<DemoProviderResult> {
     const activation = input.credentialType === "activecode";
     const credentials = activation ? null : deterministicCredentials(input);
-    const activationCode = activation
-      ? deterministicActivationCode(input.idempotencyKey)
-      : null;
 
     const form = new URLSearchParams({
       api_key: this.options.apiKey,
@@ -131,12 +113,11 @@ class ClickTvDemoProvider implements DemoProvider {
       is_isplock: "0",
       reseller_notes: input.name,
     });
+    // The activation code is deliberately left to the panel: it knows the
+    // format its own apps accept, and the visitor types it on a TV remote.
     if (credentials) {
       form.set("username", credentials.username);
       form.set("password", credentials.password);
-    }
-    if (activationCode) {
-      form.set("code", activationCode);
     }
 
     let response: Response;
@@ -176,11 +157,17 @@ class ClickTvDemoProvider implements DemoProvider {
     }
 
     const data = payload.data;
-    if (activationCode) {
+    if (activation) {
+      const code = typeof data.code === "string" ? data.code.trim() : "";
+      // Without a code the demo is unusable and its fate unknown, so this can
+      // never be reported as a clean failure that a retry would repeat.
+      if (!code) {
+        throw new DemoProviderError("PROVIDER_INVALID_RESPONSE", "ambiguous");
+      }
       return {
         kind: "activecode",
-        externalId: String(data.id ?? activationCode),
-        code: String(data.code ?? activationCode),
+        externalId: String(data.id ?? code),
+        code,
         expiresAt: null,
         packageName: packageName(input.packageId),
       };

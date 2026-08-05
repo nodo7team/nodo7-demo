@@ -99,29 +99,28 @@ describe("ClickTV demo compatibility provider", () => {
     expect(form.get("package")).toBe("7");
     expect(form.get("trial")).toBe("1");
     expect(form.get("reseller_notes")).toBe("María José");
-    expect(form.get("code")).toMatch(/^N7[A-HJ-NP-Z2-9]{8}$/);
     expect(form.has("username")).toBe(false);
     expect(form.has("password")).toBe(false);
+    // The panel picks the format its own apps and TV remotes expect.
+    expect(form.has("code")).toBe(false);
   });
 
-  it("falls back to the submitted activation code when the panel echoes none", async () => {
-    const { provider, fetchImpl } = providerWith({
+  it("refuses a response that carries no code", async () => {
+    // Without a code the demo is unusable, and whether it was created is
+    // unknown, so it must never be reported as a clean failure.
+    const { provider } = providerWith({
       status: "STATUS_SUCCESS",
       data: { id: 892 },
     });
 
-    const result = await provider.createDemo({
-      name: "Pedro",
-      packageId: 6,
-      credentialType: "activecode",
-      idempotencyKey: KEY,
-    });
-
-    expect(result).toMatchObject({
-      kind: "activecode",
-      code: submittedForm(fetchImpl).get("code"),
-      packageName: "4 horas",
-    });
+    await expect(
+      provider.createDemo({
+        name: "Pedro",
+        packageId: 6,
+        credentialType: "activecode",
+        idempotencyKey: KEY,
+      }),
+    ).rejects.toMatchObject({ outcome: "ambiguous" });
   });
 
   async function submittedValue(
@@ -156,23 +155,6 @@ describe("ClickTV demo compatibility provider", () => {
     expect(first).toMatch(/^mariatv\d{3}$/);
     expect(same).toBe(first);
     expect(different).not.toBe(first);
-  });
-
-  it("derives a stable activation code from the idempotency key", async () => {
-    const first = await submittedValue("code", "activecode", "María José", KEY);
-    const same = await submittedValue("code", "activecode", "María José", KEY);
-    const otherName = await submittedValue("code", "activecode", "Pedro", KEY);
-    const otherKey = await submittedValue(
-      "code",
-      "activecode",
-      "María José",
-      OTHER_KEY,
-    );
-
-    expect(first).toMatch(/^N7[A-HJ-NP-Z2-9]{8}$/);
-    expect(same).toBe(first);
-    expect(otherName).toBe(first);
-    expect(otherKey).not.toBe(first);
   });
 
   it.each([
