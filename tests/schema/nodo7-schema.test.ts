@@ -14,6 +14,13 @@ function credentialTypeMigration(): string {
   ).toLowerCase();
 }
 
+function whatsappMigration(): string {
+  return readFileSync(
+    "supabase/migrations/0003_demo_whatsapp_delivery.sql",
+    "utf8",
+  ).toLowerCase();
+}
+
 describe("NODO7 schema", () => {
   it("contains only the demo domain tables", () => {
     expect(sql).toContain("create table demo_access_codes");
@@ -61,6 +68,35 @@ describe("NODO7 credential type migration", () => {
     expect(migration).toContain(
       "create or replace function redact_demo_audit",
     );
+    expect(migration).toContain("provider_expires_at is null");
+    expect(migration).toContain("interval '7 days'");
+  });
+});
+
+describe("NODO7 WhatsApp delivery migration", () => {
+  it("stores the visitor phone and what happened to the message", () => {
+    const migration = whatsappMigration();
+    expect(migration).toContain("alter table demo_requests");
+    expect(migration).toContain("phone text");
+    expect(migration).toContain(
+      "check (delivery_status in ('pending','sent','failed','disabled'))",
+    );
+  });
+
+  it("leaves codes issued before this migration untouched", () => {
+    expect(whatsappMigration()).toContain("default 'pending'");
+  });
+
+  it("redacts the phone like the rest of the personal data", () => {
+    const migration = whatsappMigration();
+    expect(migration).toContain("create or replace function redact_demo_audit");
+    expect(migration).toContain("phone = null");
+    expect(migration).toContain("interval '90 days'");
+  });
+
+  it("keeps clearing secrets that never receive an expiration", () => {
+    // The 0002 rule must survive this redefinition of the same function.
+    const migration = whatsappMigration();
     expect(migration).toContain("provider_expires_at is null");
     expect(migration).toContain("interval '7 days'");
   });
