@@ -1,0 +1,119 @@
+*RESELLER API — ACTIVATION CODES EXPIRE ON CREATION*
+
+Hello,
+
+I am automating demo provisioning through the Reseller API. Activation codes created through the API do not work in the app, while identical codes created by hand in the panel work perfectly. I traced the difference to a single field and I need to know the correct API call.
+
+Username/password lines created with create_line work perfectly. This problem is specific to activation codes.
+
+
+*MY ACCOUNT*
+
+Reseller username: paneldemos
+Member ID: 1681
+Group: 20 - SUPER RESELLERS CON API
+Panel: dns.nodo7.xyz:8080
+
+Permissions returned by user_info:
+enable_activecode = 1
+force_batch_code = 1
+generate_mass_trial = 0
+default_code_length = 10
+min_code_length = 10
+max_code_length = 12
+
+
+*THE PROBLEM*
+
+Activation codes created with create_activecode are born already expired, or already counting down. The app does not accept them because there is no pending activation left to perform.
+
+Codes created manually in the panel are born in OnWatch state, meaning the duration starts when the customer first watches. Those work.
+
+
+*EVIDENCE — CODE CREATED IN THE PANEL (WORKS)*
+
+ID: 54190
+Code: 1462484569
+exp_date: null
+Batch: paneldemos
+Transaction ID: 4WT6RSCKQ6RB
+Expiration shown in panel: OnWatch, duration 1 hour
+Remaining shown in panel: unlimited
+enabled: 1, admin_enabled: 1
+is_trial: 1, package_id: 7
+
+
+*EVIDENCE — CODE CREATED BY API (FAILS)*
+
+ID: 54181
+Code: 1849649048
+exp_date: 1785901654
+Batch: empty
+Transaction ID: empty
+Expiration shown in panel: start 04-08-2026, end 04-08-2026
+Remaining shown in panel: Expired
+enabled: 1, admin_enabled: 1
+is_trial: 1, package_id: 7
+
+Both are package 7 (DEMO 1 HORA FULL), same reseller, same day. Every other field is identical. The only meaningful differences are exp_date, the missing batch, and the missing transaction ID.
+
+
+*THE EXACT REQUEST I SEND*
+
+POST to my reseller endpoint, content type application/x-www-form-urlencoded, with these fields:
+
+api_key = (redacted)
+action = create_activecode
+package = 7
+trial = 1
+is_isplock = 0
+code = 1849649048
+reseller_notes = Demo customer name
+
+The response is:
+{"status":"STATUS_SUCCESS","data":{"id":54181}}
+
+So the call reports success. The code is stored exactly as I submitted it and appears in get_activecodes, but with exp_date already set.
+
+
+*PARAMETER COMBINATIONS I ALREADY TESTED*
+
+Every one produced a non-null exp_date. These are real test codes in my account:
+
+1) ID 54201 - package=7, trial omitted - exp_date = creation time, expired immediately, is_trial 0
+2) ID 54202 - package=7, trial=0 - exp_date = creation time, expired immediately, is_trial 0
+3) ID 54203 - package=7, trial=1 - exp_date = creation time plus 1 hour, is_trial 1
+4) ID 54204 - package=7, trial=0, is_trial=0 - exp_date = creation time, is_trial 0
+5) ID 54205 - package=6, trial=0 - exp_date = creation time, is_trial 0
+
+I also tried sending bouquets_selected[] explicitly, and allowed_ips[] empty. Neither changed exp_date.
+
+
+*BATCH ENDPOINTS I LOOKED FOR*
+
+Since my group has force_batch_code = 1, and the codes that work carry a batch and a transaction ID, I assume the panel uses a batch creation path. I probed these action names and all of them returned STATUS_FAILURE with an empty message, exactly the same response as a deliberately invalid action name, so I believe none of them exist:
+
+create_activecodes, batch_create_activecode, create_batch_activecode, mass_activecode, create_mass_activecode, generate_activecodes, batch_activecode, create_activecode_batch, gen_activecode, generate_activecode, gen_activecodes, create_code, create_codes, gen_code, gen_codes, batch_code, batch_codes, create_batch, gen_batch, generate_batch, mass_trial, gen_mass_trial, generate_mass_trial, create_mass_trial, mass_trials, create_trial, gen_trial, gen_trials, get_batches, get_codes
+
+create_activecode is the only activation code creation action that responds differently from an unknown action.
+
+
+*A DOCUMENTATION ISSUE I ALSO FOUND*
+
+The published documentation shows the create_activecode response containing a code field, like this:
+{"status":"STATUS_SUCCESS","data":{"id":892,"code":"PROMO-2025-ABCD","package_id":1}}
+
+In practice the response contains no code field at all. This is workable for me because I submit my own code and it gets stored, but the documentation should probably be corrected.
+
+
+*MY QUESTIONS*
+
+1) Is there a Reseller API endpoint to create activation codes as a batch, producing codes in OnWatch state with a transaction ID, the same way the panel interface does? If yes, what is the action name and what parameters does it take?
+
+2) If there is no batch endpoint, can create_activecode produce a pending code with exp_date null? Is there a parameter I am missing?
+
+3) Does force_batch_code = 1 on my group affect this? Should activation codes created through the API behave differently because of that setting, and can it be adjusted?
+
+4) If none of this is possible today, is it planned? Automated demo provisioning cannot work with activation codes until it exists.
+
+Thank you very much for your help.
