@@ -1,3 +1,4 @@
+import { packageName } from "@/lib/demo/packages";
 import { hashSecret } from "@/lib/demo/secrets";
 import {
   DemoProviderError,
@@ -5,7 +6,7 @@ import {
   type DemoProviderInput,
   type DemoProviderResult,
 } from "@/lib/demo/provider";
-import type { DemoCredentialType, DemoPackageId } from "@/lib/demo/types";
+import type { DemoCredentialType } from "@/lib/demo/types";
 
 interface ClickTvProviderOptions {
   baseUrl: string;
@@ -33,10 +34,6 @@ const CONFIGURATION_REJECTIONS = new Set([
   "STATUS_INVALID_USERNAME",
   "STATUS_INVALID_PASSWORD",
 ]);
-
-function packageName(packageId: DemoPackageId): string {
-  return packageId === 7 ? "1 hora FULL" : "4 horas";
-}
 
 function parseExpiration(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;

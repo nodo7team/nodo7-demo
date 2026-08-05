@@ -3,6 +3,7 @@
 import { Ban, Plus, RotateCw } from "lucide-react";
 import { CREDENTIAL_TYPE_LABELS } from "@/components/admin/CodeGenerator";
 import type { AdminCodeView } from "@/lib/demo/admin-client";
+import { packageName } from "@/lib/demo/packages";
 
 const STATUS_LABELS: Record<AdminCodeView["status"], string> = {
   pending: "Pendiente",
@@ -25,7 +26,7 @@ const DELIVERY_LABELS: Record<
 
 function date(value: string | null): string {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es", {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
@@ -41,15 +42,18 @@ interface CodeTableProps {
 
 export function CodeTable({ codes, busyId, onRevoke, onReplacement, onRefresh }: CodeTableProps) {
   return (
-    <section className="n7-admin-table-wrap" aria-labelledby="codes-title">
+    <section className="ca-admin-table-wrap" aria-labelledby="codes-title">
       <header>
-        <div><p>OPERACIÓN</p><h2 id="codes-title">Códigos recientes</h2></div>
+        <div>
+          <p className="ca-eyebrow">Operación</p>
+          <h2 id="codes-title">Códigos recientes</h2>
+        </div>
         <button type="button" onClick={() => void onRefresh()}><RotateCw size={16} /> Actualizar</button>
       </header>
       {codes.length === 0 ? (
-        <div className="n7-admin-empty">No hay códigos con este filtro.</div>
+        <div className="ca-admin-empty">No hay códigos con este filtro.</div>
       ) : (
-        <div className="n7-admin-table-scroll">
+        <div className="ca-admin-table-scroll">
           <table>
             <thead><tr><th>Pase</th><th>Entrega</th><th>Estado</th><th>Visitante / demo</th><th>WhatsApp</th><th>Ventana</th><th>Red</th><th>Acción</th></tr></thead>
             <tbody>
@@ -59,14 +63,14 @@ export function CodeTable({ codes, busyId, onRevoke, onReplacement, onRefresh }:
                   <tr key={code.id}>
                     <td><strong>••••-{code.displaySuffix}</strong><small>{date(code.createdAt)}</small></td>
                     <td>
-                      <span className="n7-admin-type" data-type={code.credentialType}>
+                      <span className="ca-admin-type-badge" data-type={code.credentialType}>
                         {CREDENTIAL_TYPE_LABELS[code.credentialType]}
                       </span>
                     </td>
-                    <td><span className="n7-admin-status" data-status={code.status}>{STATUS_LABELS[code.status]}</span></td>
+                    <td><span className="ca-admin-status" data-status={code.status}>{STATUS_LABELS[code.status]}</span></td>
                     <td>
                       <strong>{code.request?.name ?? "Sin activar"}</strong>
-                      <small>{code.request ? `${code.request.packageId === 7 ? "1 hora FULL" : "4 horas"} · ${code.request.username ?? code.request.status}` : "—"}</small>
+                      <small>{code.request ? `${packageName(code.request.packageId)} · ${code.request.username ?? code.request.status}` : "—"}</small>
                     </td>
                     <td>
                       <strong>{code.request?.maskedPhone ?? "—"}</strong>
@@ -78,11 +82,11 @@ export function CodeTable({ codes, busyId, onRevoke, onReplacement, onRefresh }:
                     <td><strong>{code.activationIp ?? "—"}</strong><small>{code.generationAttemptCount}/3 envíos</small></td>
                     <td>
                       {revocable ? (
-                        <button className="n7-admin-danger" type="button" disabled={busyId === code.id} onClick={() => void onRevoke(code.id)}>
+                        <button className="ca-admin-danger" type="button" disabled={busyId === code.id} onClick={() => void onRevoke(code.id)}>
                           <Ban size={15} /> Revocar
                         </button>
                       ) : (
-                        <button className="n7-admin-action" type="button" onClick={() => void onReplacement()}>
+                        <button className="ca-admin-action" type="button" onClick={() => void onReplacement()}>
                           <Plus size={15} /> Crear reemplazo
                         </button>
                       )}

@@ -1,7 +1,9 @@
+import { packageSummary } from "@/lib/demo/packages";
 import type { DemoResultView } from "@/lib/demo/types";
 
 const DEFAULT_TEMPLATE =
-  "Tu demo NODO7 está lista.\n\n{credenciales}\n\n{vencimiento}";
+  "*ClientArea by Nodo 7 OTT*\nTu demo ya está lista.\n\n" +
+  "Plan: {paquete}\n{contenido}\n\n{credenciales}\n\n{vencimiento}";
 
 function credentialLines(result: DemoResultView): string {
   if (result.kind === "line") {
@@ -36,5 +38,6 @@ export function buildCredentialMessage(result: DemoResultView): string {
     .replaceAll("{credenciales}", credentialLines(result))
     .replaceAll("{vencimiento}", expirationLine(result))
     .replaceAll("{paquete}", result.packageName)
+    .replaceAll("{contenido}", packageSummary(result.packageId))
     .trim();
 }

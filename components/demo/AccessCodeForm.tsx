@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, KeyRound } from "lucide-react";
+import { ArrowRight, KeyRound, Timer } from "lucide-react";
 
 interface AccessCodeFormProps {
   busy: boolean;
@@ -14,15 +14,15 @@ export function AccessCodeForm({ busy, error, onSubmit }: AccessCodeFormProps) {
 
   return (
     <form
-      className="n7-form"
+      className="ca-form"
       onSubmit={(event) => {
         event.preventDefault();
         void onSubmit(code);
       }}
     >
-      <div className="n7-field">
+      <div className="ca-field">
         <label htmlFor="access-code">Código de acceso</label>
-        <div className="n7-input-wrap">
+        <div className="ca-code-input">
           <KeyRound aria-hidden="true" size={19} />
           <input
             id="access-code"
@@ -38,14 +38,23 @@ export function AccessCodeForm({ busy, error, onSubmit }: AccessCodeFormProps) {
             required
           />
         </div>
-        <p className="n7-field-hint">
-          El reloj empieza recién cuando el código es aceptado.
+        <p className="ca-hint">
+          Cópialo tal cual te llegó, con los guiones incluidos.
         </p>
       </div>
 
-      {error ? <p className="n7-error" role="alert">{error}</p> : null}
+      <p className="ca-alert ca-alert-info">
+        <Timer aria-hidden="true" size={20} />
+        <span>
+          <strong>El reloj arranca al aceptar el código.</strong>
+          Desde ahí tienes 10 minutos para elegir tu demo y recibirla. Recargar
+          la página no reinicia el tiempo.
+        </span>
+      </p>
 
-      <button className="n7-primary-button" type="submit" disabled={busy}>
+      {error ? <p className="ca-error" role="alert">{error}</p> : null}
+
+      <button className="ca-button ca-button-primary" type="submit" disabled={busy}>
         <span>{busy ? "Validando código…" : "Continuar"}</span>
         <ArrowRight aria-hidden="true" size={19} />
       </button>

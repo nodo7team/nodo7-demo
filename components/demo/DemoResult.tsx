@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, MessageCircle, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Check, Copy, MessageCircle, Tv, TriangleAlert } from "lucide-react";
+import { packageSummary } from "@/lib/demo/packages";
 import type { DemoResultView } from "@/lib/demo/types";
 
 function DeliveryNotice({ result }: { result: DemoResultView }) {
@@ -9,21 +10,26 @@ function DeliveryNotice({ result }: { result: DemoResultView }) {
 
   if (status === "sent") {
     return (
-      <p className="n7-delivery n7-delivery-sent" role="status">
-        <MessageCircle aria-hidden="true" size={17} />
-        <span>Te lo enviamos por WhatsApp{maskedPhone ? ` a ${maskedPhone}` : ""}.</span>
+      <p className="ca-alert ca-alert-good" role="status">
+        <MessageCircle aria-hidden="true" size={22} />
+        <span>
+          <strong>Te lo enviamos por WhatsApp.</strong>
+          Abre el chat de {maskedPhone ?? "tu número"}. Puede tardar hasta un
+          minuto en llegar.
+        </span>
       </p>
     );
   }
 
   if (status === "failed") {
     return (
-      <p className="n7-delivery n7-delivery-failed" role="alert">
-        <TriangleAlert aria-hidden="true" size={17} />
+      <p className="ca-alert ca-alert-danger" role="alert">
+        <TriangleAlert aria-hidden="true" size={22} />
         <span>
+          <strong>No pudimos enviarte el WhatsApp.</strong>
           {result.kind === "delivered"
-            ? "No pudimos enviarte el WhatsApp. Escríbenos y te reenviamos el acceso."
-            : "No pudimos enviarte el WhatsApp. Guarda los datos desde esta pantalla."}
+            ? "Escríbenos por el mismo medio donde pediste la demo y te reenviamos el acceso."
+            : "Copia los datos de esta pantalla antes de que se acabe el reloj."}
         </span>
       </p>
     );
@@ -46,16 +52,11 @@ export function DemoResult({ result }: { result: DemoResultView }) {
   }
 
   return (
-    <div className="n7-result">
-      <div className="n7-result-heading">
-        <span className="n7-success-mark"><ShieldCheck aria-hidden="true" size={22} /></span>
-        <div><p>DEMO CONFIRMADA</p><h2>Tu acceso está listo</h2></div>
-      </div>
-
+    <div className="ca-result">
       <DeliveryNotice result={result} />
 
       {result.kind === "delivered" ? null : result.kind === "activecode" ? (
-        <dl className="n7-credentials n7-credentials-single">
+        <dl className="ca-creds ca-creds-single">
           <div>
             <dt>Código de activación</dt><dd>{result.code}</dd>
             <button type="button" aria-label="Copiar código" onClick={() => void copy("code", result.code)}>
@@ -64,7 +65,7 @@ export function DemoResult({ result }: { result: DemoResultView }) {
           </div>
         </dl>
       ) : (
-        <dl className="n7-credentials">
+        <dl className="ca-creds">
           <div>
             <dt>Usuario</dt><dd>{result.username}</dd>
             <button type="button" aria-label="Copiar usuario" onClick={() => void copy("username", result.username)}>
@@ -80,19 +81,28 @@ export function DemoResult({ result }: { result: DemoResultView }) {
         </dl>
       )}
 
-      <div className="n7-result-meta">
-        <span>{result.packageName}</span>
+      {result.kind === "delivered" ? null : (
+        <p className="ca-alert ca-alert-loud">
+          <TriangleAlert aria-hidden="true" size={22} />
+          <span>
+            <strong>Guárdalo ahora.</strong>
+            Cuando el reloj llegue a cero, esta pantalla deja de mostrarlo.
+          </span>
+        </p>
+      )}
+
+      <div className="ca-result-meta">
+        <span><Tv aria-hidden="true" size={15} /> <strong>{result.packageName}</strong></span>
         <span>
           {result.kind === "activecode"
-            ? "El tiempo empieza cuando actives el código"
+            ? "El tiempo empieza cuando la actives"
             : result.expiresAt
               ? `Vence ${result.expiresAt}`
               : "Duración definida por el proveedor"}
         </span>
       </div>
-      {result.kind === "delivered" ? null : (
-        <p className="n7-result-warning">Guarda los datos ahora: dejarán de mostrarse cuando termine el reloj.</p>
-      )}
+
+      <p className="ca-hint">{packageSummary(result.packageId)}</p>
     </div>
   );
 }

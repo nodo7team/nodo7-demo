@@ -7,10 +7,13 @@ interface DemoCountdownProps {
   onExpire(): void;
 }
 
+const WINDOW_SECONDS = 600;
+
 function secondsUntil(deadline: string): number {
   return Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / 1_000));
 }
 
+/** The live overlay of a broadcast: on-air light, timecode, and a draining bar. */
 export function DemoCountdown({ deadline, onExpire }: DemoCountdownProps) {
   const [seconds, setSeconds] = useState(() => secondsUntil(deadline));
 
@@ -27,18 +30,32 @@ export function DemoCountdown({ deadline, onExpire }: DemoCountdownProps) {
 
   const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
   const remainder = (seconds % 60).toString().padStart(2, "0");
-  const progress = Math.max(0, Math.min(1, seconds / 600));
+  const progress = Math.max(0, Math.min(1, seconds / WINDOW_SECONDS));
+  const low = seconds <= 60;
 
   return (
-    <div
-      className="n7-countdown"
-      style={{ "--n7-progress": `${progress * 360}deg` } as React.CSSProperties}
-      aria-live="polite"
-      aria-label={`${minutes} minutos y ${remainder} segundos restantes`}
-    >
-      <span className="n7-countdown-kicker">VENTANA ACTIVA</span>
-      <strong>{minutes}:{remainder}</strong>
-      <span>para generar y leer tu demo</span>
-    </div>
+    <>
+      <div
+        className="ca-tc"
+        role="timer"
+        aria-label={`Quedan ${minutes} minutos y ${remainder} segundos`}
+      >
+        <span className="ca-onair" data-live="true">
+          <i aria-hidden="true" /> EN VIVO
+        </span>
+        <span className="ca-tc-label">TIEMPO RESTANTE</span>
+        <strong className="ca-tc-value" data-low={low}>
+          {minutes}:{remainder}
+        </strong>
+      </div>
+      <div
+        className="ca-drain"
+        data-low={low}
+        style={{ "--ca-progress": `${progress * 100}%` } as React.CSSProperties}
+        aria-hidden="true"
+      >
+        <i />
+      </div>
+    </>
   );
 }

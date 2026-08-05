@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Delete } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
 
 const PIN_LENGTH = 6;
 
@@ -57,87 +56,42 @@ export function LoginForm() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* PIN display */}
-      <div className="rounded-2xl bg-bg-elevated border border-border shadow-sm p-6">
-        <div className="flex justify-center gap-3 pt-1">
-          {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-            <div
-              key={i}
-              className={cn(
-                'h-4 w-4 rounded-full border-2 transition-all duration-200',
-                i < pin.length
-                  ? 'bg-accent border-accent scale-110'
-                  : 'bg-transparent border-border',
-                error && 'animate-shake border-danger',
-              )}
-            />
-          ))}
-        </div>
-
-        {error && (
-          <div className="text-center text-sm font-medium text-danger mt-4 animate-fade-in">
-            {error}
-          </div>
-        )}
+    <div>
+      <div className="ca-pin-dots" aria-hidden="true">
+        {Array.from({ length: PIN_LENGTH }).map((_, i) => (
+          <i key={i} data-on={i < pin.length} />
+        ))}
       </div>
 
-      {/* Numpad */}
-      <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+      {error ? <p className="ca-pin-error" role="alert">{error}</p> : null}
+
+      <div className="ca-pad">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
           <button
             key={n}
             type="button"
             onClick={() => handleDigit(String(n))}
             disabled={loading}
-            className={cn(
-              'h-14 rounded-xl bg-bg-elevated border border-border text-xl font-bold text-fg',
-              'hover:bg-accent/10 hover:border-accent/30 hover:-translate-y-px',
-              'active:translate-y-0 active:scale-[0.97]',
-              'transition-all duration-150',
-              'disabled:opacity-30 disabled:pointer-events-none',
-              'shadow-sm hover:shadow-md',
-            )}
           >
             {n}
           </button>
         ))}
-        <div /> {/* spacer */}
-        <button
-          type="button"
-          onClick={() => handleDigit('0')}
-          disabled={loading}
-          className={cn(
-            'h-14 rounded-xl bg-bg-elevated border border-border text-xl font-bold text-fg',
-            'hover:bg-accent/10 hover:border-accent/30 hover:-translate-y-px',
-            'active:translate-y-0 active:scale-[0.97]',
-            'transition-all duration-150',
-            'disabled:opacity-30 disabled:pointer-events-none',
-            'shadow-sm hover:shadow-md',
-          )}
-        >
+        <span />
+        <button type="button" onClick={() => handleDigit('0')} disabled={loading}>
           0
         </button>
         <button
           type="button"
+          className="ca-pad-del"
           onClick={handleDelete}
           disabled={loading || pin.length === 0}
-          className={cn(
-            'h-14 rounded-xl bg-bg-elevated border border-border text-fg-muted',
-            'hover:bg-danger-soft hover:text-danger hover:border-danger/20',
-            'active:scale-[0.97] transition-all duration-150',
-            'disabled:opacity-20 disabled:pointer-events-none',
-            'shadow-sm flex items-center justify-center',
-          )}
           aria-label="Borrar"
         >
-          <Delete className="h-5 w-5" />
+          <Delete size={20} />
         </button>
       </div>
 
-      <p className="text-center text-xs text-fg-subtle mt-4">
-        Ingresá tu PIN de 6 dígitos para acceder
-      </p>
+      <footer>PIN de 6 dígitos</footer>
     </div>
   );
 }

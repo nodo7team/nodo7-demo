@@ -49,21 +49,21 @@ export function CodeGenerator({
   }
 
   return (
-    <section className="n7-admin-generator" aria-labelledby="generator-title">
+    <section className="ca-admin-generator" aria-labelledby="generator-title">
       <div>
-        <span><KeyRound size={16} /> EMISIÓN DE PASES</span>
+        <span className="ca-eyebrow"><KeyRound size={15} /> Emisión de pases</span>
         <h2 id="generator-title">Crear acceso de un solo uso</h2>
-        <p>El tiempo no empieza hasta que el visitante introduce el código.</p>
+        <p>El reloj de 10 minutos arranca recién cuando el visitante lo canjea.</p>
       </div>
 
-      <fieldset className="n7-admin-type-fieldset" disabled={busy}>
-        <legend>Qué recibirá el visitante</legend>
-        <div className="n7-admin-type-grid">
+      <fieldset className="ca-admin-types" disabled={busy}>
+        <legend className="ca-eyebrow">Qué recibirá el visitante</legend>
+        <div className="ca-admin-type-grid">
           {CREDENTIAL_TYPES.map((item) => {
             const Icon = item.icon;
             return (
               <label
-                className="n7-admin-type-option"
+                className="ca-admin-type"
                 data-selected={credentialType === item.id}
                 key={item.id}
               >
@@ -74,7 +74,7 @@ export function CodeGenerator({
                   checked={credentialType === item.id}
                   onChange={() => onCredentialTypeChange(item.id)}
                 />
-                <span className="n7-admin-type-icon">
+                <span className="ca-admin-type-icon">
                   <Icon aria-hidden="true" size={18} />
                 </span>
                 <strong>{CREDENTIAL_TYPE_LABELS[item.id]}</strong>
@@ -85,19 +85,17 @@ export function CodeGenerator({
         </div>
       </fieldset>
 
-      <button className="n7-admin-primary" type="button" disabled={busy} onClick={() => void onCreate()}>
+      <button className="ca-admin-primary" type="button" disabled={busy} onClick={() => void onCreate()}>
         <Plus size={18} /> {busy ? "Creando…" : "Crear código"}
       </button>
 
       {code ? (
-        <div className="n7-admin-new-code" role="status">
+        <div className="ca-admin-new-code" role="status">
           <div>
-            <small>CÓPIALO AHORA · NO VOLVERÁ A MOSTRARSE</small>
+            <small>CÓPIALO AHORA · NO VUELVE A MOSTRARSE</small>
             <strong>{code}</strong>
             {createdType ? (
-              <em className="n7-admin-new-code-type">
-                Entrega: {CREDENTIAL_TYPE_LABELS[createdType].toLowerCase()}
-              </em>
+              <em>Entrega: {CREDENTIAL_TYPE_LABELS[createdType].toLowerCase()}</em>
             ) : null}
           </div>
           <button type="button" onClick={() => void copyCode()} aria-label="Copiar código">

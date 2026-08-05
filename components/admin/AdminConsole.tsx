@@ -78,7 +78,7 @@ export function AdminConsole({ initialCodes }: { initialCodes: AdminCodeView[] }
   }
 
   return (
-    <div className="n7-admin-console">
+    <div className="ca-admin-console">
       <CodeGenerator
         code={newCode}
         createdType={createdType}
@@ -87,8 +87,8 @@ export function AdminConsole({ initialCodes }: { initialCodes: AdminCodeView[] }
         onCredentialTypeChange={setCredentialType}
         onCreate={createCode}
       />
-      {error ? <p className="n7-admin-error" role="alert">{error}</p> : null}
-      <nav className="n7-admin-filters" aria-label="Filtrar códigos por estado">
+      {error ? <p className="ca-error" role="alert">{error}</p> : null}
+      <nav className="ca-admin-filters" aria-label="Filtrar códigos por estado">
         {STATUS_FILTERS.map((item) => (
           <button key={item.value} type="button" data-selected={filter === item.value} onClick={() => setFilter(item.value)}>
             {item.label}

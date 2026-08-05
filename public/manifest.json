@@ -1,9 +1,13 @@
 {
-  "name": "NODO7 Demos",
-  "short_name": "NODO7",
-  "description": "Portal seguro de demos IPTV NODO7",
+  "name": "ClientArea by Nodo 7 OTT",
+  "short_name": "ClientArea",
+  "description": "Portal seguro de demos IPTV de NODO7 OTT",
   "start_url": "/demo",
   "display": "standalone",
-  "background_color": "#eff5e4",
-  "theme_color": "#a6ec2f"
+  "background_color": "#070910",
+  "theme_color": "#5b71c4",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/brand/clientarea-icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
 }

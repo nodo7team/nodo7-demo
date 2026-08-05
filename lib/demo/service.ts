@@ -5,6 +5,7 @@ import type {
   DemoRepository,
   DemoRequestRecord,
 } from "@/lib/demo/repository";
+import { packageName } from "@/lib/demo/packages";
 import { createDemoSessionToken } from "@/lib/demo/session";
 import {
   decryptCredential,
@@ -14,7 +15,6 @@ import {
 import type {
   DemoCredentialType,
   DemoDeliveryView,
-  DemoPackageId,
   DemoResultView,
   DemoSessionView,
 } from "@/lib/demo/types";
@@ -60,10 +60,6 @@ function remainingSeconds(deadline: string, now: Date): number {
     0,
     Math.ceil((new Date(deadline).getTime() - now.getTime()) / 1_000),
   );
-}
-
-function packageName(packageId: DemoPackageId): string {
-  return packageId === 7 ? "1 hora FULL" : "4 horas";
 }
 
 /**
