@@ -14,6 +14,10 @@ const ALLOWED_ACTIONS = new Set([
   "get_activecode",
   "get_activecodes",
   "get_line",
+  "get_lines",
+  "get_mag",
+  "get_mags",
+  "get_enigmas",
 ]);
 
 export async function GET(request: NextRequest) {
@@ -41,10 +45,13 @@ export async function GET(request: NextRequest) {
   const url = new URL(baseUrl);
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("action", action);
-  for (const key of ["id", "start", "limit"]) {
+  for (const key of ["id", "start", "limit", "filter"]) {
     const value = request.nextUrl.searchParams.get(key);
     if (value) url.searchParams.set(key, value);
   }
+  // The panel expects the DataTables shape for its search box.
+  const search = request.nextUrl.searchParams.get("search");
+  if (search) url.searchParams.set("search[value]", search);
 
   try {
     const response = await fetch(url, { cache: "no-store" });
