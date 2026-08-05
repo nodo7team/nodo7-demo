@@ -74,6 +74,23 @@ function deterministicCredentials(input: DemoProviderInput) {
   };
 }
 
+/**
+ * Digits only, because the visitor types this into a TV remote where letters
+ * mean cycling through a keyboard.
+ *
+ * Derived from the idempotency key so a retry submits the same code and the
+ * panel rejects the duplicate instead of leaving a second demo behind. The
+ * panel never echoes a code back, so whatever we send here is the only code
+ * that will ever exist for this demo.
+ */
+function deterministicActivationCode(idempotencyKey: string): string {
+  const digest = hashSecret(`activecode:${idempotencyKey}`);
+  return Array.from({ length: 10 }, (_, index) => {
+    const byte = Number.parseInt(digest.slice(index * 2, index * 2 + 2), 16);
+    return String(byte % 10);
+  }).join("");
+}
+
 function rejectionFor(
   status: unknown,
   credentialType: DemoCredentialType,
@@ -104,6 +121,9 @@ class ClickTvDemoProvider implements DemoProvider {
   async createDemo(input: DemoProviderInput): Promise<DemoProviderResult> {
     const activation = input.credentialType === "activecode";
     const credentials = activation ? null : deterministicCredentials(input);
+    const activationCode = activation
+      ? deterministicActivationCode(input.idempotencyKey)
+      : null;
 
     const form = new URLSearchParams({
       api_key: this.options.apiKey,
@@ -113,11 +133,12 @@ class ClickTvDemoProvider implements DemoProvider {
       is_isplock: "0",
       reseller_notes: input.name,
     });
-    // The activation code is deliberately left to the panel: it knows the
-    // format its own apps accept, and the visitor types it on a TV remote.
     if (credentials) {
       form.set("username", credentials.username);
       form.set("password", credentials.password);
+    }
+    if (activationCode) {
+      form.set("code", activationCode);
     }
 
     let response: Response;
@@ -157,17 +178,14 @@ class ClickTvDemoProvider implements DemoProvider {
     }
 
     const data = payload.data;
-    if (activation) {
-      const code = typeof data.code === "string" ? data.code.trim() : "";
-      // Without a code the demo is unusable and its fate unknown, so this can
-      // never be reported as a clean failure that a retry would repeat.
-      if (!code) {
-        throw new DemoProviderError("PROVIDER_INVALID_RESPONSE", "ambiguous");
-      }
+    if (activationCode) {
+      // create_activecode answers without a code field, so the one we
+      // submitted is the demo's only activation code.
+      const echoed = typeof data.code === "string" ? data.code.trim() : "";
       return {
         kind: "activecode",
-        externalId: String(data.id ?? code),
-        code,
+        externalId: String(data.id ?? activationCode),
+        code: echoed || activationCode,
         expiresAt: null,
         packageName: packageName(input.packageId),
       };

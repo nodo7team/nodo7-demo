@@ -57,16 +57,17 @@ where (
 
 ## Generación del código de activación
 
-**El código lo genera ClickTV.** El parámetro `code` es opcional y no se envía.
+**El código lo enviamos nosotros: 10 dígitos, sin letras.** Derivado del `idempotencyKey`, así un reintento manda el mismo y el panel lo rechaza por duplicado en vez de dejar una segunda demo suelta.
 
-La primera versión lo derivaba del `idempotencyKey`, para que un reintento pidiera el mismo código y el panel lo rechazara por duplicado. Se descartó por dos motivos:
+Solo números porque **el visitante lo escribe en el control remoto de un televisor**, donde cada letra obliga a recorrer un teclado en pantalla.
 
-- **El visitante escribe ese código en el control remoto de un televisor.** Nuestro formato mezclaba letras y números; el panel conoce el que sus propias apps esperan y el que es cómodo de marcar.
-- La protección contra duplicados valía cuando se creía que cada demo costaba créditos. No cuesta nada: un reintento ambiguo deja un código huérfano en el panel, no una pérdida.
+### Por qué no lo genera el panel
 
-Como consecuencia, nada identifica un intento anterior desde nuestro lado. Por eso cualquier rechazo que no sea un error de configuración se clasifica como **ambiguo**: un reintento crearía un segundo código.
+Se intentó: el parámetro `code` es opcional, y dejárselo a ClickTV parecía lo más seguro en cuanto al formato. Falló en producción el 2026-08-05.
 
-Si la respuesta llega sin `code`, se trata como ambigua. Un código vacío deja una demo inservible y no se sabe si se creó.
+**`create_activecode` responde sin campo `code`.** El panel crea la línea, devuelve `id`, y nada más. Sin enviarlo nosotros no hay ningún código que entregarle al visitante, y las dos solicitudes de esa versión terminaron en `PROVIDER_INVALID_RESPONSE`.
+
+O sea que el código que enviamos **es el único que llega a existir** para esa demo. Si la respuesta trajera un `code`, se prefiere ese; hoy nunca lo trae.
 
 El nombre del visitante viaja en `reseller_notes` en **ambos** tipos. En `line` el nombre ya va dentro del usuario; en `activecode` no hay nada más que lo identifique en el panel del proveedor.
 

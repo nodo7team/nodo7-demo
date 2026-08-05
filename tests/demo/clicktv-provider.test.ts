@@ -101,26 +101,46 @@ describe("ClickTV demo compatibility provider", () => {
     expect(form.get("reseller_notes")).toBe("María José");
     expect(form.has("username")).toBe(false);
     expect(form.has("password")).toBe(false);
-    // The panel picks the format its own apps and TV remotes expect.
-    expect(form.has("code")).toBe(false);
+    // Digits only: the visitor types this on a TV remote.
+    expect(form.get("code")).toMatch(/^\d{10}$/);
   });
 
-  it("refuses a response that carries no code", async () => {
-    // Without a code the demo is unusable, and whether it was created is
-    // unknown, so it must never be reported as a clean failure.
-    const { provider } = providerWith({
+  it("keeps the submitted code, which the panel does not echo back", async () => {
+    // Verified in production: create_activecode answers without data.code, so
+    // the code we sent is the only one that exists.
+    const { provider, fetchImpl } = providerWith({
       status: "STATUS_SUCCESS",
       data: { id: 892 },
     });
 
-    await expect(
-      provider.createDemo({
-        name: "Pedro",
-        packageId: 6,
-        credentialType: "activecode",
-        idempotencyKey: KEY,
-      }),
-    ).rejects.toMatchObject({ outcome: "ambiguous" });
+    const result = await provider.createDemo({
+      name: "Pedro",
+      packageId: 6,
+      credentialType: "activecode",
+      idempotencyKey: KEY,
+    });
+
+    expect(result).toMatchObject({
+      kind: "activecode",
+      externalId: "892",
+      code: submittedForm(fetchImpl).get("code"),
+      packageName: "4 horas",
+    });
+  });
+
+  it("derives a stable numeric code from the idempotency key", async () => {
+    const first = await submittedValue("code", "activecode", "María José", KEY);
+    const same = await submittedValue("code", "activecode", "María José", KEY);
+    const otherKey = await submittedValue(
+      "code",
+      "activecode",
+      "María José",
+      OTHER_KEY,
+    );
+
+    expect(first).toMatch(/^\d{10}$/);
+    expect(same).toBe(first);
+    expect(otherKey).not.toBe(first);
   });
 
   async function submittedValue(
