@@ -455,6 +455,10 @@
 .n7-phone-row select:focus-visible,
 .n7-phone-row input:focus-visible { outline: 3px solid rgb(106 158 32 / 0.38); outline-offset: 2px; }
 .n7-phone-preview { display: block; margin-top: 0.4rem; color: var(--n7-muted); font-size: 0.7rem; }
+.n7-phone-preview[data-confirmed="true"] { color: #35571f; font-weight: 700; }
+.n7-delivery-warning { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0 0 0.2rem; padding: 0.9rem 1rem; color: #7a4a12; background: #fdf1dc; border-left: 3px solid #d08a25; font-size: 0.76rem; line-height: 1.55; }
+.n7-delivery-warning svg { flex: 0 0 auto; margin-top: 0.1rem; }
+.n7-delivery-warning strong { display: block; }
 
 .n7-delivery { display: flex; gap: 0.55rem; align-items: flex-start; margin: 0; padding: 0.8rem 0.9rem; font-size: 0.76rem; line-height: 1.5; }
 .n7-delivery svg { flex: 0 0 auto; margin-top: 0.1rem; }

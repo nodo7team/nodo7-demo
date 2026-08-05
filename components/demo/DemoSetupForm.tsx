@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Clock3, Film, Radio, Sparkles } from "lucide-react";
+import { Clock3, Film, Radio, Sparkles, TriangleAlert } from "lucide-react";
 import type { DemoPackageId } from "@/lib/demo/types";
 import {
   COUNTRY_CODES,
@@ -13,6 +13,9 @@ import {
 interface DemoSetupFormProps {
   busy: boolean;
   error: string | null;
+  /** The credentials will never appear on screen, so a wrong number costs
+   * the visitor the whole demo. Only warn when that is actually true. */
+  deliveryOnly: boolean;
   onSubmit(input: {
     name: string;
     packageId: DemoPackageId;
@@ -26,7 +29,12 @@ const PACKAGES = [
   { id: 6 as const, name: "4 horas", detail: "Más tiempo para explorar series y películas.", icon: Film },
 ];
 
-export function DemoSetupForm({ busy, error, onSubmit }: DemoSetupFormProps) {
+export function DemoSetupForm({
+  busy,
+  error,
+  deliveryOnly,
+  onSubmit,
+}: DemoSetupFormProps) {
   const [name, setName] = useState("");
   const [countryIso, setCountryIso] = useState("US");
   const [phone, setPhone] = useState("");
@@ -63,6 +71,17 @@ export function DemoSetupForm({ busy, error, onSubmit }: DemoSetupFormProps) {
         />
       </div>
 
+      {deliveryOnly ? (
+        <p className="n7-delivery-warning" role="note">
+          <TriangleAlert aria-hidden="true" size={18} />
+          <span>
+            <strong>Tus datos de acceso llegan solo por WhatsApp.</strong>{" "}
+            No se muestran en esta pantalla, así que revisa bien tu número:
+            si está mal, no vas a poder recuperarlos.
+          </span>
+        </p>
+      ) : null}
+
       <div className="n7-field">
         <label htmlFor="visitor-phone">WhatsApp</label>
         <div className="n7-phone-row">
@@ -89,9 +108,9 @@ export function DemoSetupForm({ busy, error, onSubmit }: DemoSetupFormProps) {
             required
           />
         </div>
-        <small className="n7-phone-preview">
+        <small className="n7-phone-preview" data-confirmed={Boolean(normalized)}>
           {normalized
-            ? `Te enviaremos las credenciales a +${dial} ${normalized.slice(dial.length)}`
+            ? `Enviaremos tu acceso a +${dial} ${normalized.slice(dial.length)}`
             : "Escribe tu número sin el código de país."}
         </small>
       </div>

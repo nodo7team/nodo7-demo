@@ -245,6 +245,12 @@ Eso deja al visitante sin nada cuando el envío falla, porque el código ya se c
 
 Queda un residuo asumido: si el envío falla después de haber comprobado la sesión, esa demo se pierde. `sent` sigue significando encolado, nunca entregado.
 
+### Advertir antes, no explicar después
+
+Con el interruptor en `true`, el formulario avisa **antes de generar** que los datos de acceso llegan solo por WhatsApp y que no se mostrarán en pantalla. Sin ese aviso, quien escribe mal su número descubre el problema cuando ya no tiene arreglo: el código consumido y la demo creada.
+
+La advertencia se muestra únicamente cuando es cierta. El estado `setup` de `DemoSessionView` lleva un `deliveryOnly` calculado en el servidor, porque un aviso que no corresponde al comportamiento real es peor que ninguno.
+
 Antes de activarlo, NODO7 debería comprobar a mano, sobre demos reales, que los mensajes efectivamente llegan. El cambio se hace en Vercel, sin redesplegar, y se revierte igual de rápido si aparecen quejas.
 
 ## Variables de entorno

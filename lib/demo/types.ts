@@ -59,7 +59,14 @@ export type DemoResultView =
 
 export type DemoSessionView =
   | { state: "none" | "expired" }
-  | { state: "setup"; deadline: string; remainingSeconds: number }
+  | {
+      state: "setup";
+      deadline: string;
+      remainingSeconds: number;
+      /** True when the credentials will never appear on screen, so a wrong
+       * phone number leaves the visitor with nothing. */
+      deliveryOnly: boolean;
+    }
   | {
       state: "result";
       deadline: string;

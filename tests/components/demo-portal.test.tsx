@@ -59,6 +59,7 @@ describe("NODO7 demo portal", () => {
           state: "setup",
           deadline: new Date(Date.now() + 600_000).toISOString(),
           remainingSeconds: 600,
+          deliveryOnly: false,
         }}
       />,
     );
@@ -92,6 +93,7 @@ describe("NODO7 demo portal", () => {
               state: "setup",
               deadline: new Date(Date.now() + 600_000).toISOString(),
               remainingSeconds: 600,
+              deliveryOnly: false,
             }),
           );
         }
@@ -105,6 +107,7 @@ describe("NODO7 demo portal", () => {
           state: "setup",
           deadline: new Date(Date.now() + 600_000).toISOString(),
           remainingSeconds: 600,
+          deliveryOnly: false,
         }}
       />,
     );
@@ -131,6 +134,45 @@ describe("NODO7 demo portal", () => {
     expect(screen.getByText("demo-pass")).toBeVisible();
   });
 
+  it("warns that a wrong number means no access at all", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ state: "none" })),
+    );
+    render(
+      <DemoPortal
+        initialSession={{
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+          deliveryOnly: true,
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/solo por whatsapp/i)).toBeVisible();
+    expect(screen.getByText(/no se muestran en esta pantalla/i)).toBeVisible();
+  });
+
+  it("does not warn while the screen still shows the credentials", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ state: "none" })),
+    );
+    render(
+      <DemoPortal
+        initialSession={{
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+          deliveryOnly: false,
+        }}
+      />,
+    );
+
+    expect(screen.queryByText(/no se muestran en esta pantalla/i)).not.toBeInTheDocument();
+  });
+
   it("sends the country and the typed number when generating", async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (String(url).includes("/api/demo/generate")) {
@@ -151,6 +193,7 @@ describe("NODO7 demo portal", () => {
           state: "setup",
           deadline: new Date(Date.now() + 600_000).toISOString(),
           remainingSeconds: 600,
+          deliveryOnly: false,
         }),
       );
     });
@@ -162,6 +205,7 @@ describe("NODO7 demo portal", () => {
           state: "setup",
           deadline: new Date(Date.now() + 600_000).toISOString(),
           remainingSeconds: 600,
+          deliveryOnly: false,
         }}
       />,
     );
@@ -280,6 +324,7 @@ describe("NODO7 demo portal", () => {
           state: "setup",
           deadline: "2026-07-22T12:00:01.000Z",
           remainingSeconds: 1,
+          deliveryOnly: false,
         }),
       ),
     );
@@ -289,6 +334,7 @@ describe("NODO7 demo portal", () => {
           state: "setup",
           deadline: "2026-07-22T12:00:01.000Z",
           remainingSeconds: 1,
+          deliveryOnly: false,
         }}
       />,
     );

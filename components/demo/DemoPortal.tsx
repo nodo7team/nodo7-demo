@@ -11,12 +11,18 @@ import type { DemoPackageId, DemoResultView, DemoSessionView } from "@/lib/demo/
 
 type PortalState =
   | { kind: "access" }
-  | { kind: "setup"; deadline: string }
+  | { kind: "setup"; deadline: string; deliveryOnly: boolean }
   | { kind: "result"; deadline: string; result: DemoResultView }
   | { kind: "expired" };
 
 function portalState(session: DemoSessionView): PortalState {
-  if (session.state === "setup") return { kind: "setup", deadline: session.deadline };
+  if (session.state === "setup") {
+    return {
+      kind: "setup",
+      deadline: session.deadline,
+      deliveryOnly: session.deliveryOnly,
+    };
+  }
   if (session.state === "result") {
     return { kind: "result", deadline: session.deadline, result: session.result };
   }
@@ -125,7 +131,14 @@ export function DemoPortal({ initialSession }: { initialSession: DemoSessionView
 
         <div className="n7-ticket-body">
           {state.kind === "access" ? <AccessCodeForm busy={busy} error={error} onSubmit={activate} /> : null}
-          {state.kind === "setup" ? <DemoSetupForm busy={busy} error={error} onSubmit={generate} /> : null}
+          {state.kind === "setup" ? (
+            <DemoSetupForm
+              busy={busy}
+              error={error}
+              deliveryOnly={state.deliveryOnly}
+              onSubmit={generate}
+            />
+          ) : null}
           {state.kind === "result" ? <DemoResult result={state.result} /> : null}
           {state.kind === "expired" ? (
             <div className="n7-expired" aria-live="polite">

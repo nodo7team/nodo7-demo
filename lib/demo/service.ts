@@ -200,6 +200,7 @@ export function createDemoService(
           state: "setup",
           deadline: record.sessionDeadline,
           remainingSeconds: seconds,
+          deliveryOnly: process.env.WHATSAPP_HIDE_CREDENTIALS === "true",
         };
       }
 
