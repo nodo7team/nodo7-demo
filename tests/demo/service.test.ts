@@ -144,6 +144,8 @@ function makeUsedRecord(
       providerIdempotencyKey: "00000000-0000-4000-8000-000000000001",
       status: "ok",
       attemptCount: 1,
+      phone: "13465551234",
+      deliveryStatus: "sent",
       username: activation ? null : "demo-user",
       password: encryptCredential(activation ? "N7ABCD2345" : "demo-pass"),
       providerExpiresAt: activation ? null : "2026-07-22T13:01:00.000Z",

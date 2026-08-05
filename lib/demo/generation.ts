@@ -9,14 +9,21 @@ import {
 } from "@/lib/demo/provider";
 import { encryptCredential, hashSecret } from "@/lib/demo/secrets";
 import type {
+  DemoDeliveryStatus,
+  DemoDeliveryView,
   DemoPackageId,
   DemoResultView,
   EncryptedCredential,
 } from "@/lib/demo/types";
+import { getWhatsAppClient, type WhatsAppClient } from "@/lib/whatsapp/client";
+import { buildCredentialMessage } from "@/lib/whatsapp/message";
+import { findCountry, maskPhone, normalizePhone } from "@/lib/whatsapp/phone";
 
 const GenerateSchema = z.object({
   name: z.string().trim().min(2).max(80),
   packageId: z.union([z.literal(6), z.literal(7)]),
+  countryIso: z.string().trim().length(2),
+  phone: z.string().trim().min(1),
 });
 
 export interface DemoGenerationRepository {
@@ -28,7 +35,12 @@ export interface DemoGenerationRepository {
     accessCodeId: string;
     name: string;
     packageId: DemoPackageId;
+    phone: string | null;
   }): Promise<{ record: DemoRequestRecord; created: boolean }>;
+  recordDelivery(input: {
+    requestId: string;
+    status: DemoDeliveryStatus;
+  }): Promise<void>;
   prepareRequestRetry(requestId: string): Promise<DemoRequestRecord | null>;
   completeGeneration(input: {
     sessionHash: string;
@@ -47,6 +59,7 @@ export interface DemoGenerationRepository {
 
 export type DemoGenerationPublicCode =
   | "INVALID_REQUEST"
+  | "PHONE_UNREACHABLE"
   | "SESSION_UNAVAILABLE"
   | "GENERATION_IN_PROGRESS"
   | "GENERATION_FAILED"
@@ -82,9 +95,15 @@ function sessionIsActive(
   );
 }
 
+/** Hiding the credentials is only safe once the message actually went out. */
+function hideCredentials(status: DemoDeliveryStatus): boolean {
+  return status === "sent" && process.env.WHATSAPP_HIDE_CREDENTIALS === "true";
+}
+
 export function createDemoGenerator(
   repository: DemoGenerationRepository,
   provider: DemoProvider,
+  whatsapp: WhatsAppClient = getWhatsAppClient(),
 ): DemoGenerator {
   return {
     async generateDemoForSession({ token, body, now }) {
@@ -99,15 +118,31 @@ export function createDemoGenerator(
         throw new DemoGenerationError("INVALID_REQUEST", 400);
       }
 
+      const country = findCountry(parsed.data.countryIso.toUpperCase());
+      const phone = country
+        ? normalizePhone(country.dial, parsed.data.phone)
+        : null;
+      if (!phone) {
+        throw new DemoGenerationError("INVALID_REQUEST", 400);
+      }
+
       const access = await repository.findBySessionHash(sessionHash);
       if (!sessionIsActive(access, now)) {
         throw new DemoGenerationError("SESSION_UNAVAILABLE", 409);
+      }
+
+      // Validating before creating anything is what forces a real number: a
+      // rejection after the fact would fall back to the screen and let a made
+      // up number through.
+      if (whatsapp.isConfigured() && (await whatsapp.numberExists(phone)) === false) {
+        throw new DemoGenerationError("PHONE_UNREACHABLE", 422);
       }
 
       const selected = await repository.getOrCreateRequest({
         accessCodeId: access.id,
         name: parsed.data.name,
         packageId: parsed.data.packageId,
+        phone,
       });
       let request = selected.record;
       if (!selected.created) {
@@ -193,24 +228,58 @@ export function createDemoGenerator(
         throw new DemoGenerationError("OUTCOME_UNKNOWN", 502);
       }
 
-      if (providerResult.kind === "activecode") {
-        return {
-          kind: "activecode",
-          code: providerResult.code,
-          packageId: request.packageId,
-          packageName: providerResult.packageName,
-          expiresAt: null,
-        };
+      const credentials: DemoResultView =
+        providerResult.kind === "activecode"
+          ? {
+              kind: "activecode",
+              code: providerResult.code,
+              packageId: request.packageId,
+              packageName: providerResult.packageName,
+              expiresAt: null,
+              delivery: { status: "pending", maskedPhone: maskPhone(phone) },
+            }
+          : {
+              kind: "line",
+              username: providerResult.username,
+              password: providerResult.password,
+              packageId: request.packageId,
+              packageName: providerResult.packageName,
+              expiresAt: providerResult.expiresAt,
+              delivery: { status: "pending", maskedPhone: maskPhone(phone) },
+            };
+
+      // The demo already exists and is valid. Delivery only decides where the
+      // visitor reads it, so nothing below may turn into a failed generation.
+      let status: DemoDeliveryStatus = "disabled";
+      if (whatsapp.isConfigured()) {
+        try {
+          const sent = await whatsapp.sendText({
+            phone,
+            message: buildCredentialMessage(credentials),
+          });
+          status = sent ? "sent" : "failed";
+        } catch {
+          status = "failed";
+        }
       }
 
-      return {
-        kind: "line",
-        username: providerResult.username,
-        password: providerResult.password,
-        packageId: request.packageId,
-        packageName: providerResult.packageName,
-        expiresAt: providerResult.expiresAt,
-      };
+      try {
+        await repository.recordDelivery({ requestId: request.id, status });
+      } catch {
+        // The visitor already has the demo; only the audit trail is behind.
+      }
+
+      const delivery: DemoDeliveryView = { status, maskedPhone: maskPhone(phone) };
+      if (hideCredentials(status)) {
+        return {
+          kind: "delivered",
+          packageId: request.packageId,
+          packageName: providerResult.packageName,
+          expiresAt: providerResult.expiresAt,
+          delivery,
+        };
+      }
+      return { ...credentials, delivery };
     },
   };
 }

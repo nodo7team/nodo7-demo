@@ -13,10 +13,12 @@ import {
 } from "@/lib/demo/secrets";
 import type {
   DemoCredentialType,
+  DemoDeliveryView,
   DemoPackageId,
   DemoResultView,
   DemoSessionView,
 } from "@/lib/demo/types";
+import { maskPhone } from "@/lib/whatsapp/phone";
 
 const ACTIVATION_WINDOW_MS = 15 * 60 * 1_000;
 const MAX_FAILED_ACTIVATIONS = 10;
@@ -72,6 +74,25 @@ function resultView(
   credentialType: DemoCredentialType,
   request: DemoRequestRecord,
 ): DemoResultView | null {
+  const delivery: DemoDeliveryView = {
+    status: request.deliveryStatus,
+    maskedPhone: maskPhone(request.phone),
+  };
+
+  // Withholding the secret only makes sense once the message actually went out.
+  if (
+    request.deliveryStatus === "sent" &&
+    process.env.WHATSAPP_HIDE_CREDENTIALS === "true"
+  ) {
+    return {
+      kind: "delivered",
+      packageId: request.packageId,
+      packageName: packageName(request.packageId),
+      expiresAt: request.providerExpiresAt,
+      delivery,
+    };
+  }
+
   if (!request.password) return null;
   const secret = decryptCredential(request.password);
 
@@ -82,6 +103,7 @@ function resultView(
       packageId: request.packageId,
       packageName: packageName(request.packageId),
       expiresAt: null,
+      delivery,
     };
   }
 
@@ -93,6 +115,7 @@ function resultView(
     packageId: request.packageId,
     packageName: packageName(request.packageId),
     expiresAt: request.providerExpiresAt,
+    delivery,
   };
 }
 

@@ -15,6 +15,8 @@ import type {
   DemoRequestRecord,
 } from "@/lib/demo/repository";
 import { decryptCredential, hashSecret } from "@/lib/demo/secrets";
+import type { DemoDeliveryStatus } from "@/lib/demo/types";
+import type { WhatsAppClient } from "@/lib/whatsapp/client";
 
 const NOW = new Date("2026-07-22T12:00:00.000Z");
 const TOKEN = "opaque-session-token";
@@ -72,6 +74,7 @@ class GenerationRepositoryDouble implements DemoGenerationRepository {
     accessCodeId: string;
     name: string;
     packageId: 6 | 7;
+    phone: string;
   }): Promise<{ record: DemoRequestRecord; created: boolean }> {
     if (this.request) return { record: this.request, created: false };
     this.request = {
@@ -79,6 +82,8 @@ class GenerationRepositoryDouble implements DemoGenerationRepository {
       accessCodeId: input.accessCodeId,
       name: input.name,
       packageId: input.packageId,
+      phone: input.phone,
+      deliveryStatus: "pending",
       providerIdempotencyKey: "00000000-0000-4000-8000-000000000001",
       status: "creating",
       attemptCount: 1,
@@ -138,6 +143,24 @@ class GenerationRepositoryDouble implements DemoGenerationRepository {
     this.request.status = input.status;
     this.request.errorCode = input.errorCode;
   }
+
+  async recordDelivery(input: {
+    requestId: string;
+    status: DemoDeliveryStatus;
+  }): Promise<void> {
+    if (!this.request || this.request.id !== input.requestId) return;
+    this.request.deliveryStatus = input.status;
+  }
+}
+
+function whatsappDouble(overrides: Partial<WhatsAppClient> = {}): WhatsAppClient {
+  return {
+    isConfigured: () => true,
+    numberExists: vi.fn().mockResolvedValue(true),
+    sendText: vi.fn().mockResolvedValue(true),
+    connectionState: vi.fn().mockResolvedValue("connected" as const),
+    ...overrides,
+  };
 }
 
 function successfulProvider(): DemoProvider {
@@ -160,6 +183,7 @@ describe("demo generation", () => {
     process.env.DEMO_HASH_SECRET = "h".repeat(64);
     process.env.DEMO_CREDENTIALS_KEY = Buffer.alloc(32, 7).toString("base64");
     delete process.env.DEMO_PROVIDER;
+    delete process.env.WHATSAPP_HIDE_CREDENTIALS;
     repository = new GenerationRepositoryDouble();
   });
 
@@ -169,7 +193,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7 },
+        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).resolves.toMatchObject({
@@ -207,10 +231,10 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7 },
+        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       kind: "activecode",
       code: "N7ABCD2345",
       packageId: 7,
@@ -224,6 +248,143 @@ describe("demo generation", () => {
       "N7ABCD2345",
     );
     expect(decryptCredential(repository.completedPassword!)).toBe("N7ABCD2345");
+  });
+
+  const setup = {
+    token: TOKEN,
+    body: { name: "María", packageId: 7, countryIso: "US", phone: "(346) 555-1234" },
+    now: NOW,
+  };
+
+  it("refuses an unreachable number without touching the provider", async () => {
+    const provider = successfulProvider();
+    const whatsapp = whatsappDouble({
+      numberExists: vi.fn().mockResolvedValue(false),
+    });
+    const generator = createDemoGenerator(repository, provider, whatsapp);
+
+    await expect(generator.generateDemoForSession(setup)).rejects.toMatchObject({
+      publicCode: "PHONE_UNREACHABLE",
+    });
+    expect(provider.createDemo).not.toHaveBeenCalled();
+    expect(whatsapp.numberExists).toHaveBeenCalledWith("13465551234");
+  });
+
+  it("lets the visitor through when the check cannot decide", async () => {
+    // A dead session reports every number invalid, so an undecidable answer
+    // must never cost the visitor their demo.
+    const provider = successfulProvider();
+    const whatsapp = whatsappDouble({
+      numberExists: vi.fn().mockResolvedValue(null),
+    });
+    const generator = createDemoGenerator(repository, provider, whatsapp);
+
+    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
+      kind: "line",
+    });
+    expect(provider.createDemo).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends the credentials and records the delivery", async () => {
+    const whatsapp = whatsappDouble();
+    const generator = createDemoGenerator(repository, successfulProvider(), whatsapp);
+
+    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
+      kind: "line",
+      delivery: { status: "sent", maskedPhone: "+1 346…1234" },
+    });
+    const [message] = (whatsapp.sendText as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(message.phone).toBe("13465551234");
+    expect(message.message).toContain("nodo7-demo");
+    expect(message.message).toContain("provider-secret");
+    expect(repository.request?.deliveryStatus).toBe("sent");
+  });
+
+  it("keeps the credentials on screen when the message fails", async () => {
+    const whatsapp = whatsappDouble({
+      sendText: vi.fn().mockResolvedValue(false),
+    });
+    const generator = createDemoGenerator(repository, successfulProvider(), whatsapp);
+
+    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
+      kind: "line",
+      username: "nodo7-demo",
+      delivery: { status: "failed" },
+    });
+    expect(repository.request?.deliveryStatus).toBe("failed");
+  });
+
+  it("never fails the demo because the message failed", async () => {
+    const whatsapp = whatsappDouble({
+      sendText: vi.fn().mockRejectedValue(new Error("waclient down")),
+    });
+    const generator = createDemoGenerator(repository, successfulProvider(), whatsapp);
+
+    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
+      kind: "line",
+      delivery: { status: "failed" },
+    });
+  });
+
+  it("behaves as before when WhatsApp is switched off", async () => {
+    const whatsapp = whatsappDouble({ isConfigured: () => false });
+    const provider = successfulProvider();
+    const generator = createDemoGenerator(repository, provider, whatsapp);
+
+    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
+      kind: "line",
+      username: "nodo7-demo",
+      delivery: { status: "disabled" },
+    });
+    expect(whatsapp.numberExists).not.toHaveBeenCalled();
+    expect(whatsapp.sendText).not.toHaveBeenCalled();
+  });
+
+  it("withholds the credentials from the browser once WhatsApp is the only channel", async () => {
+    process.env.WHATSAPP_HIDE_CREDENTIALS = "true";
+    const generator = createDemoGenerator(
+      repository,
+      successfulProvider(),
+      whatsappDouble(),
+    );
+
+    const result = await generator.generateDemoForSession(setup);
+    expect(result).toEqual({
+      kind: "delivered",
+      packageId: 7,
+      packageName: "1 hora FULL",
+      expiresAt: "2026-07-22T13:00:00.000Z",
+      delivery: { status: "sent", maskedPhone: "+1 346…1234" },
+    });
+    expect(JSON.stringify(result)).not.toContain("provider-secret");
+  });
+
+  it("still shows the credentials when hiding them would strand the visitor", async () => {
+    process.env.WHATSAPP_HIDE_CREDENTIALS = "true";
+    const generator = createDemoGenerator(
+      repository,
+      successfulProvider(),
+      whatsappDouble({ sendText: vi.fn().mockResolvedValue(false) }),
+    );
+
+    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
+      kind: "line",
+      password: "provider-secret",
+      delivery: { status: "failed" },
+    });
+  });
+
+  it("rejects a phone that cannot be a real number", async () => {
+    const provider = successfulProvider();
+    const generator = createDemoGenerator(repository, provider, whatsappDouble());
+
+    await expect(
+      generator.generateDemoForSession({
+        ...setup,
+        body: { ...setup.body, phone: "123" },
+      }),
+    ).rejects.toMatchObject({ publicCode: "INVALID_REQUEST" });
+    expect(provider.createDemo).not.toHaveBeenCalled();
   });
 
   it("reuses the same idempotency key after an explicit provider failure", async () => {
@@ -243,7 +404,7 @@ describe("demo generation", () => {
     const generator = createDemoGenerator(repository, { createDemo });
     const input = {
       token: TOKEN,
-      body: { name: "Juan", packageId: 6 as const },
+      body: { name: "Juan", packageId: 6 as const, countryIso: "US", phone: "3465551234" },
       now: NOW,
     };
 
@@ -266,7 +427,7 @@ describe("demo generation", () => {
       await expect(
         generator.generateDemoForSession({
           token: TOKEN,
-          body: { name: "x", packageId: 99 },
+          body: { name: "x", packageId: 99, countryIso: "US", phone: "3465551234" },
           now: NOW,
         }),
       ).rejects.toMatchObject({ publicCode: "INVALID_REQUEST" });
@@ -274,7 +435,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7 },
+        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).rejects.toMatchObject({ publicCode: "SESSION_UNAVAILABLE" });
@@ -288,7 +449,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7 },
+        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
         now: repository.now,
       }),
     ).rejects.toMatchObject({ publicCode: "SESSION_UNAVAILABLE" });
@@ -302,7 +463,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7 },
+        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).rejects.toMatchObject({ publicCode: "SESSION_UNAVAILABLE" });
@@ -314,7 +475,7 @@ describe("demo generation", () => {
     const generator = createDemoGenerator(repository, { createDemo });
     const input = {
       token: TOKEN,
-      body: { name: "María", packageId: 7 as const },
+      body: { name: "María", packageId: 7 as const, countryIso: "US", phone: "3465551234" },
       now: NOW,
     };
     await expect(generator.generateDemoForSession(input)).rejects.toMatchObject({
@@ -334,7 +495,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7 },
+        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).rejects.toMatchObject({ publicCode: "OUTCOME_UNKNOWN" });

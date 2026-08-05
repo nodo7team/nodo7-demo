@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   AccessCodeStatus,
   DemoCredentialType,
+  DemoDeliveryStatus,
   DemoPackageId,
   DemoRequestStatus,
   EncryptedCredential,
@@ -12,6 +13,8 @@ export interface DemoRequestRecord {
   accessCodeId: string;
   name: string;
   packageId: DemoPackageId;
+  phone: string | null;
+  deliveryStatus: DemoDeliveryStatus;
   providerIdempotencyKey: string;
   status: DemoRequestStatus;
   attemptCount: number;
@@ -109,6 +112,8 @@ function mapRequest(row: DatabaseRow | null | undefined): DemoRequestRecord | nu
     accessCodeId: row.access_code_id,
     name: row.name,
     packageId: row.package_id,
+    phone: row.phone ?? null,
+    deliveryStatus: row.delivery_status ?? "pending",
     providerIdempotencyKey: row.provider_idempotency_key,
     status: row.status,
     attemptCount: row.attempt_count,
@@ -236,6 +241,7 @@ export class SupabaseDemoRepository implements DemoRepository {
     accessCodeId: string;
     name: string;
     packageId: DemoPackageId;
+    phone: string | null;
   }): Promise<{ record: DemoRequestRecord; created: boolean }> {
     const inserted = await this.client
       .from("demo_requests")
@@ -243,6 +249,7 @@ export class SupabaseDemoRepository implements DemoRepository {
         access_code_id: input.accessCodeId,
         name: input.name,
         package_id: input.packageId,
+        phone: input.phone,
       })
       .select("*")
       .maybeSingle();
@@ -330,6 +337,17 @@ export class SupabaseDemoRepository implements DemoRepository {
       })
       .eq("id", input.requestId)
       .eq("status", "creating");
+    if (error) throw error;
+  }
+
+  async recordDelivery(input: {
+    requestId: string;
+    status: DemoDeliveryStatus;
+  }): Promise<void> {
+    const { error } = await this.client.rpc("record_demo_delivery", {
+      p_request_id: input.requestId,
+      p_status: input.status,
+    });
     if (error) throw error;
   }
 

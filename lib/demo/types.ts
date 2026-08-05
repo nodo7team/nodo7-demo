@@ -18,6 +18,19 @@ export interface EncryptedCredential {
   tag: string;
 }
 
+/** `sent` means the panel accepted the message, never that it was delivered. */
+export type DemoDeliveryStatus = "pending" | "sent" | "failed" | "disabled";
+
+export interface DemoDeliveryView {
+  status: DemoDeliveryStatus;
+  maskedPhone: string | null;
+}
+
+/**
+ * The `delivered` variant carries no credentials at all: when WhatsApp is the
+ * only channel, the secret never reaches the browser instead of being hidden
+ * there.
+ */
 export type DemoResultView =
   | {
       kind: "line";
@@ -26,6 +39,7 @@ export type DemoResultView =
       packageId: DemoPackageId;
       packageName: string;
       expiresAt: string | null;
+      delivery: DemoDeliveryView;
     }
   | {
       kind: "activecode";
@@ -33,6 +47,14 @@ export type DemoResultView =
       packageId: DemoPackageId;
       packageName: string;
       expiresAt: null;
+      delivery: DemoDeliveryView;
+    }
+  | {
+      kind: "delivered";
+      packageId: DemoPackageId;
+      packageName: string;
+      expiresAt: string | null;
+      delivery: DemoDeliveryView;
     };
 
 export type DemoSessionView =
