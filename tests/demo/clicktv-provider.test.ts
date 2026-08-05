@@ -97,8 +97,11 @@ describe("ClickTV demo compatibility provider", () => {
     const form = submittedForm(fetchImpl);
     expect(form.get("action")).toBe("create_activecode");
     expect(form.get("package")).toBe("7");
-    expect(form.get("trial")).toBe("1");
     expect(form.get("reseller_notes")).toBe("María José");
+    // trial=1 makes the panel stamp an expiry immediately, which leaves the
+    // code already spent and nothing for the app to activate. A code created
+    // by hand in the panel has a null exp_date and works.
+    expect(form.get("trial")).toBe("0");
     expect(form.has("username")).toBe(false);
     expect(form.has("password")).toBe(false);
     // Digits only: the visitor types this on a TV remote.

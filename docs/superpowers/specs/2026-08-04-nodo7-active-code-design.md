@@ -10,6 +10,17 @@
 - La pantalla de resultado de un active code **solo muestra el código**, sin instrucciones de aplicación.
 - El resultado del proveedor se modela como **unión discriminada**, para que el compilador obligue a manejar los dos casos.
 
+## El parámetro `trial` significa cosas distintas
+
+| Acción | `trial` | Efecto |
+|---|---|---|
+| `create_line` | `1` | La línea existe ya y su prueba empieza a correr. Correcto. |
+| `create_activecode` | `0` | El código queda pendiente, con `exp_date` nulo, y se activa al canjearse. |
+
+Con `trial=1` en `create_activecode` el panel estampa `exp_date` en el momento de la creación: el código nace consumido, la demo ya empezó, y **la app no encuentra ninguna activación pendiente**. El código llega bien al cliente y no activa nada.
+
+Se detectó el 2026-08-05 comparando un código creado a mano en el panel —`exp_date: null`, funciona— contra los que emitía la integración —`exp_date` con fecha, no funcionan—. Todo lo demás era idéntico: mismo formato, mismo paquete, habilitado, con bouquets.
+
 ## Contrato del proveedor
 
 | | `create_line` | `create_activecode` |
