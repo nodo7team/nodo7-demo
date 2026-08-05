@@ -138,11 +138,27 @@ alter table demo_requests
 
 El teléfono es dato personal y entra en la regla de redacción existente de los 90 días, junto con `activation_ip`.
 
-## Normalización de números
+## El teléfono del visitante
 
-Los celulares argentinos en WhatsApp llevan un `9` después del código de país: `5491155551234`, no `541155551234`. Sin ese dígito el mensaje no llega o va a otro destinatario.
+NODO7 opera desde Estados Unidos, pero **las demos se piden desde cualquier parte del mundo**. No hay un código de país que se pueda asumir: si alguien escribe `5551234`, no existe forma de saber si es estadounidense, mexicano o español.
 
-El normalizador acepta lo que el visitante escriba (`11 5555-1234`, `+54 9 11 5555 1234`, `01155551234`) y produce la forma canónica. El formulario muestra el número resultante para que la persona lo confirme antes de enviar.
+Adivinar mal sale caro. `check_number` respondería que el número no existe y le negaríamos la demo a un cliente real, con un rechazo idéntico al de un número inventado.
+
+Por eso el formulario separa el país del número local:
+
+```
+┌─────────────────┬──────────────────────┐
+│ 🇺🇸 +1        ▾ │ (346) 555-1234       │
+└─────────────────┴──────────────────────┘
+  Te enviaremos las credenciales por WhatsApp
+  a este número: +1 346 555 1234
+```
+
+El selector lista todos los países con su prefijo y arranca en Estados Unidos, que es el mercado principal. El número canónico es el prefijo seguido del número local, descartando todo carácter que no sea dígito.
+
+Debajo se muestra el número resultante para que la persona lo confirme antes de generar. La validación de formato solo descarta llamadas obviamente inútiles: **la verificación real es `check_number`**.
+
+La tabla de prefijos vive en `lib/whatsapp/country-codes.ts` como dato estático, sin dependencias externas.
 
 ## Mensaje
 
