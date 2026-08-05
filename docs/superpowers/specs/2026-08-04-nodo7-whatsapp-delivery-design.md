@@ -202,7 +202,15 @@ El selector lista todos los países con su prefijo y arranca en Estados Unidos, 
 
 Debajo se muestra el número resultante para que la persona lo confirme antes de generar. La validación de formato solo descarta llamadas obviamente inútiles: **la verificación real es `check_number`**.
 
-La tabla de prefijos vive en `lib/whatsapp/country-codes.ts` como dato estático, sin dependencias externas.
+La tabla de prefijos vive en `lib/whatsapp/phone.ts` como dato estático, sin dependencias externas.
+
+### La trampa del nueve argentino
+
+Un celular argentino llega a WhatsApp como `54 9 <área> <número>`. **`check_number` acepta el número con y sin ese nueve —las dos formas responden `valid: true`—, pero `/send` las entrega a JID distintos.** Omitirlo manda las credenciales a otra persona, y nada en la API lo delata: el panel informa un envío exitoso.
+
+Se detectó en producción el 2026-08-04, con un mensaje que salió a `542612136248` y nunca llegó a su destinatario.
+
+El normalizador agrega el nueve cuando falta y descarta el `15` que esos números llevan al marcarse localmente. Es una regla por país, no una excepción suelta, porque el catálogo puede necesitar más casos.
 
 ## Mensaje
 
@@ -227,11 +235,15 @@ WHATSAPP_HIDE_CREDENTIALS=false   → se envía y se muestra
 WHATSAPP_HIDE_CREDENTIALS=true    → se muestra solo si el envío falló
 ```
 
-Arranca en `false`, y conviene que se quede ahí un tiempo largo.
+En `true` las credenciales **nunca** llegan al navegador, se hayan entregado o no. NODO7 lo pidió así: si aparecieran en pantalla ante un fallo, nadie estaría obligado a dar un número correcto.
 
-El motivo está verificado: el envío exitoso devuelve `status: "PENDING"`, o sea encolado. `sent` solo dice que la API aceptó el mensaje, y sin webhooks documentados no hay manera de saber si llegó. Pasar a `true` significa cortar la pantalla confiando en una señal que nunca confirma entrega.
+Eso deja al visitante sin nada cuando el envío falla, porque el código ya se consumió y la demo ya existe. Tres defensas lo hacen improbable:
 
-La prueba del 2026-08-04 sí llegó al teléfono, lo que demuestra que el canal funciona. Una entrega comprobada no es lo mismo que entrega garantizada.
+1. **Antes de generar se exige que la sesión esté conectada.** Con el canal caído no se crea nada y el visitante ve "intentá en unos minutos", en vez de quedarse con un código quemado. Solo aplica con el interruptor en `true`: si la pantalla sigue mostrando las credenciales, una sesión caída no es fatal y bloquear sería peor.
+2. **El envío se reintenta una vez.** Reenviar es seguro; crear una segunda demo no lo sería.
+3. **El panel marca los envíos fallidos**, para que NODO7 emita un código nuevo a esa persona.
+
+Queda un residuo asumido: si el envío falla después de haber comprobado la sesión, esa demo se pierde. `sent` sigue significando encolado, nunca entregado.
 
 Antes de activarlo, NODO7 debería comprobar a mano, sobre demos reales, que los mensajes efectivamente llegan. El cambio se hace en Vercel, sin redesplegar, y se revierte igual de rápido si aparecen quejas.
 

@@ -13,7 +13,11 @@ type GeneratorService = Pick<DemoGenerator, "generateDemoForSession">;
 function publicMessage(error: DemoGenerationError): string {
   switch (error.publicCode) {
     case "INVALID_REQUEST":
-      return "Revisa el nombre y el paquete seleccionado.";
+      return "Revisa el nombre, el teléfono y el paquete seleccionado.";
+    case "PHONE_UNREACHABLE":
+      return "Ese número no tiene WhatsApp. Revísalo: es donde enviaremos tu acceso.";
+    case "DELIVERY_UNAVAILABLE":
+      return "No podemos enviar mensajes en este momento. Vuelve a intentarlo en unos minutos.";
     case "SESSION_UNAVAILABLE":
       return "La sesión ya no está disponible.";
     case "GENERATION_IN_PROGRESS":

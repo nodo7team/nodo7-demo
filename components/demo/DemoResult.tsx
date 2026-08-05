@@ -20,7 +20,11 @@ function DeliveryNotice({ result }: { result: DemoResultView }) {
     return (
       <p className="n7-delivery n7-delivery-failed" role="alert">
         <TriangleAlert aria-hidden="true" size={17} />
-        <span>No pudimos enviarte el WhatsApp. Guarda los datos desde esta pantalla.</span>
+        <span>
+          {result.kind === "delivered"
+            ? "No pudimos enviarte el WhatsApp. Escríbenos y te reenviamos el acceso."
+            : "No pudimos enviarte el WhatsApp. Guarda los datos desde esta pantalla."}
+        </span>
       </p>
     );
   }

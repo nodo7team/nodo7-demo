@@ -79,9 +79,10 @@ function resultView(
     maskedPhone: maskPhone(request.phone),
   };
 
-  // Withholding the secret only makes sense once the message actually went out.
+  // Once WhatsApp is the only channel the secret never reaches the browser,
+  // delivered or not: reloading the page must not become a way around it.
   if (
-    request.deliveryStatus === "sent" &&
+    request.deliveryStatus !== "disabled" &&
     process.env.WHATSAPP_HIDE_CREDENTIALS === "true"
   ) {
     return {

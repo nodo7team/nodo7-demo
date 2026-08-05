@@ -60,6 +60,7 @@ export interface DemoGenerationRepository {
 export type DemoGenerationPublicCode =
   | "INVALID_REQUEST"
   | "PHONE_UNREACHABLE"
+  | "DELIVERY_UNAVAILABLE"
   | "SESSION_UNAVAILABLE"
   | "GENERATION_IN_PROGRESS"
   | "GENERATION_FAILED"
@@ -95,9 +96,24 @@ function sessionIsActive(
   );
 }
 
-/** Hiding the credentials is only safe once the message actually went out. */
-function hideCredentials(status: DemoDeliveryStatus): boolean {
-  return status === "sent" && process.env.WHATSAPP_HIDE_CREDENTIALS === "true";
+/** When true the credentials never reach the browser, delivered or not. */
+function whatsappIsOnlyChannel(): boolean {
+  return process.env.WHATSAPP_HIDE_CREDENTIALS === "true";
+}
+
+/** Resending is safe; creating a second demo is not. */
+async function sendWithOneRetry(
+  whatsapp: WhatsAppClient,
+  input: { phone: string; message: string },
+): Promise<DemoDeliveryStatus> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      if (await whatsapp.sendText(input)) return "sent";
+    } catch {
+      // Both attempts are allowed to fail without failing the demo.
+    }
+  }
+  return "failed";
 }
 
 export function createDemoGenerator(
@@ -131,11 +147,22 @@ export function createDemoGenerator(
         throw new DemoGenerationError("SESSION_UNAVAILABLE", 409);
       }
 
-      // Validating before creating anything is what forces a real number: a
-      // rejection after the fact would fall back to the screen and let a made
-      // up number through.
-      if (whatsapp.isConfigured() && (await whatsapp.numberExists(phone)) === false) {
-        throw new DemoGenerationError("PHONE_UNREACHABLE", 422);
+      if (whatsapp.isConfigured()) {
+        // Without a screen to fall back to, a dead session would burn the code
+        // and create a demo the visitor could never read.
+        if (
+          whatsappIsOnlyChannel() &&
+          (await whatsapp.connectionState()) !== "connected"
+        ) {
+          throw new DemoGenerationError("DELIVERY_UNAVAILABLE", 503);
+        }
+
+        // Validating before creating anything is what forces a real number: a
+        // rejection after the fact would fall back to the screen and let a made
+        // up number through.
+        if ((await whatsapp.numberExists(phone)) === false) {
+          throw new DemoGenerationError("PHONE_UNREACHABLE", 422);
+        }
       }
 
       const selected = await repository.getOrCreateRequest({
@@ -250,18 +277,12 @@ export function createDemoGenerator(
 
       // The demo already exists and is valid. Delivery only decides where the
       // visitor reads it, so nothing below may turn into a failed generation.
-      let status: DemoDeliveryStatus = "disabled";
-      if (whatsapp.isConfigured()) {
-        try {
-          const sent = await whatsapp.sendText({
+      const status: DemoDeliveryStatus = whatsapp.isConfigured()
+        ? await sendWithOneRetry(whatsapp, {
             phone,
             message: buildCredentialMessage(credentials),
-          });
-          status = sent ? "sent" : "failed";
-        } catch {
-          status = "failed";
-        }
-      }
+          })
+        : "disabled";
 
       try {
         await repository.recordDelivery({ requestId: request.id, status });
@@ -270,7 +291,7 @@ export function createDemoGenerator(
       }
 
       const delivery: DemoDeliveryView = { status, maskedPhone: maskPhone(phone) };
-      if (hideCredentials(status)) {
+      if (whatsappIsOnlyChannel() && status !== "disabled") {
         return {
           kind: "delivered",
           packageId: request.packageId,

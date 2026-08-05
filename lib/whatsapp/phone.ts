@@ -215,6 +215,21 @@ function digitsOnly(value: string): string {
 }
 
 /**
+ * Argentine mobiles reach WhatsApp as 54 9 <area> <number>. check_number
+ * accepts the number with or without that nine, but /send routes each form to
+ * a different JID, so omitting it delivers the credentials to a stranger.
+ *
+ * Locally the same line is dialled as 0<area> 15 <number>; neither the trunk
+ * zero nor the 15 belong in the international form.
+ */
+function applyArgentineMobileRules(local: string): string {
+  const withoutFifteen = local.replace(/^(\d{2,4})15(\d{6,8})$/, "$1$2");
+  return withoutFifteen.startsWith("9")
+    ? withoutFifteen
+    : `9${withoutFifteen}`;
+}
+
+/**
  * Joins a dial code with whatever the visitor typed. Returns null when the
  * result cannot be a reachable number; check_number remains the real check.
  */
@@ -232,6 +247,8 @@ export function normalizePhone(
   if (local.startsWith(dial) && local.length - dial.length >= MIN_DIGITS - 1) {
     local = local.slice(dial.length);
   }
+
+  if (dial === "54") local = applyArgentineMobileRules(local);
 
   const full = `${dial}${local}`;
   if (full.length < MIN_DIGITS || full.length > MAX_DIGITS) return null;

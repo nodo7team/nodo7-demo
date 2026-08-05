@@ -16,13 +16,29 @@ describe("phone normalization", () => {
   });
 
   it("keeps international numbers outside the United States", () => {
-    expect(normalizePhone("54", "9 261 602-7055")).toBe("5492616027055");
     expect(normalizePhone("52", "55 1234 5678")).toBe("525512345678");
+    expect(normalizePhone("57", "301 234 5678")).toBe("573012345678");
   });
 
   it("drops the trunk zero that local formats carry", () => {
-    expect(normalizePhone("54", "0261 602-7055")).toBe("542616027055");
     expect(normalizePhone("44", "07700 900123")).toBe("447700900123");
+  });
+
+  it("adds the mobile nine that Argentine numbers need on WhatsApp", () => {
+    // check_number accepts both forms, but /send delivers them to different
+    // JIDs, so a missing nine sends the credentials to the wrong person.
+    expect(normalizePhone("54", "2612136248")).toBe("5492612136248");
+    expect(normalizePhone("54", "0261 213-6248")).toBe("5492612136248");
+    expect(normalizePhone("54", "11 5555-1234")).toBe("5491155551234");
+  });
+
+  it("does not double the nine when the visitor already wrote it", () => {
+    expect(normalizePhone("54", "9 261 213-6248")).toBe("5492612136248");
+    expect(normalizePhone("54", "+54 9 261 213 6248")).toBe("5492612136248");
+  });
+
+  it("drops the 15 that Argentine mobiles carry when dialled locally", () => {
+    expect(normalizePhone("54", "0261 15 213-6248")).toBe("5492612136248");
   });
 
   it("does not repeat a dial code the visitor already typed", () => {

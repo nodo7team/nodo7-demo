@@ -359,7 +359,7 @@ describe("demo generation", () => {
     expect(JSON.stringify(result)).not.toContain("provider-secret");
   });
 
-  it("still shows the credentials when hiding them would strand the visitor", async () => {
+  it("never puts the credentials on screen once WhatsApp is the only channel", async () => {
     process.env.WHATSAPP_HIDE_CREDENTIALS = "true";
     const generator = createDemoGenerator(
       repository,
@@ -367,11 +367,65 @@ describe("demo generation", () => {
       whatsappDouble({ sendText: vi.fn().mockResolvedValue(false) }),
     );
 
-    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
-      kind: "line",
-      password: "provider-secret",
+    const result = await generator.generateDemoForSession(setup);
+    expect(result).toMatchObject({
+      kind: "delivered",
       delivery: { status: "failed" },
     });
+    expect(JSON.stringify(result)).not.toContain("provider-secret");
+  });
+
+  it("refuses to generate when the only channel is down", async () => {
+    // Generating here would burn the code and create a demo the visitor can
+    // never read, because nothing will be shown on screen.
+    process.env.WHATSAPP_HIDE_CREDENTIALS = "true";
+    const provider = successfulProvider();
+    const generator = createDemoGenerator(
+      repository,
+      provider,
+      whatsappDouble({
+        connectionState: vi.fn().mockResolvedValue("disconnected" as const),
+      }),
+    );
+
+    await expect(generator.generateDemoForSession(setup)).rejects.toMatchObject({
+      publicCode: "DELIVERY_UNAVAILABLE",
+    });
+    expect(provider.createDemo).not.toHaveBeenCalled();
+  });
+
+  it("generates anyway with a dead session while the screen still shows the demo", async () => {
+    const provider = successfulProvider();
+    const generator = createDemoGenerator(
+      repository,
+      provider,
+      whatsappDouble({
+        connectionState: vi.fn().mockResolvedValue("disconnected" as const),
+      }),
+    );
+
+    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
+      kind: "line",
+    });
+    expect(provider.createDemo).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries the message once before giving up", async () => {
+    // Resending is safe, unlike creating a second demo.
+    const sendText = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const generator = createDemoGenerator(
+      repository,
+      successfulProvider(),
+      whatsappDouble({ sendText }),
+    );
+
+    await expect(generator.generateDemoForSession(setup)).resolves.toMatchObject({
+      delivery: { status: "sent" },
+    });
+    expect(sendText).toHaveBeenCalledTimes(2);
   });
 
   it("rejects a phone that cannot be a real number", async () => {
