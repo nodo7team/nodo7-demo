@@ -92,9 +92,12 @@ Revisadas las 156 páginas de documentación (140 endpoints de Web API en 16 gru
 2. **`set_webhook` no documenta los eventos** que entrega ni su estructura.
 3. **No hay límites de tasa, cuotas ni política de reintentos** en ninguna página.
 
+Los contratos reales de `check_number` y `/send` quedaron verificados contra la API y están documentados más abajo. El resto de los endpoints sigue sin verificar, y sus ejemplos no merecen confianza.
+
 Consecuencias:
 
 - El adaptador trata como fallo **todo lo que no sea** `status: "success"`, y parsea a la defensiva.
+- El código HTTP se ignora por completo: la API responde 200 también en los errores.
 - `delivery_status = 'sent'` significa **"la API aceptó el mensaje"**, no "el cliente lo recibió". Sin webhooks documentados no hay forma de confirmar la entrega.
 - Los límites de envío hay que preguntárselos a waclient antes de depender del canal.
 
@@ -126,6 +129,47 @@ Con un `instance_id` inexistente, la respuesta es `HTTP 200`, `status: "success"
 Si el `instance_id` está mal configurado o la sesión se cayó, `check_number` declara inválido a todo número que reciba. Cada visitante vería "tu número no está en WhatsApp", nadie podría generar una demo, y no quedaría registrado ni un error: un fallo total y silencioso que además culpa al usuario.
 
 Por eso **un `valid: false` solo se cree si la instancia está sana**. Antes de rechazar a nadie se confirma `connection_state === "connected"` con `instance_status`. Si la instancia no está conectada, no se valida y se deja pasar, igual que cuando `check_number` no responde: el visitante nunca paga por una falla nuestra.
+
+## Contrato real de `/send`
+
+Verificado contra la API el 2026-08-04, con un envío exitoso confirmado en el teléfono de destino.
+
+Éxito:
+
+```json
+{ "status": "success", "message": "Success",
+  "message_payload": {
+    "key": { "remoteJid": "…@s.whatsapp.net", "fromMe": true, "id": "3EB0…" },
+    "messageTimestamp": "1785888536",
+    "status": "PENDING" } }
+```
+
+Errores observados:
+
+| Situación | HTTP | `status` | `message` |
+|---|---|---|---|
+| Envío aceptado | 200 | `success` | `Success` |
+| Instancia inexistente o caída | **200** | `error` | `Instance ID Invalidated` |
+| Número inválido | **200** | `error` | `Invalid phone number` |
+| Token inválido | **200** | `error` | `Access token does not exist` |
+
+### Todo devuelve HTTP 200
+
+Incluso los errores. **El código HTTP no sirve para decidir nada**: el éxito es exclusivamente `payload.status === "success"`.
+
+Un `if (response.ok)` daría por exitoso cualquier fallo, el respaldo en pantalla no se mostraría nunca, y el visitante quedaría esperando un mensaje que jamás se envió. Es el error natural que cometería cualquier implementación razonable contra esta API.
+
+### `PENDING` significa encolado, no entregado
+
+El campo `status` del envío exitoso es `PENDING`. La API confirma que aceptó el mensaje, no que llegó. Sumado a que los eventos de webhook no están documentados, **no hay forma programática de confirmar una entrega**.
+
+Por eso `delivery_status = 'sent'` se llama así y no `'delivered'`.
+
+### Latencia
+
+El envío tardó 4,7 segundos. Se suma al tiempo de creación de la demo en ClickTV, así que la espera del visitante pasa de unos 3 a unos 8 segundos.
+
+Se espera igual la respuesta en vez de enviar en segundo plano: sin conocer el resultado no se puede decidir si mostrar el respaldo, y el respaldo es lo que evita que alguien quede sin su demo. La espera es el precio de esa garantía.
 
 ## Base de datos
 
@@ -185,7 +229,9 @@ WHATSAPP_HIDE_CREDENTIALS=true    → se muestra solo si el envío falló
 
 Arranca en `false`, y conviene que se quede ahí un tiempo largo.
 
-El motivo es el hueco 2 de arriba: `sent` solo dice que la API aceptó el mensaje. La Web API puede responder `success` sin que el mensaje llegue nunca, y sin webhooks documentados no hay manera de detectarlo desde el sistema. Pasar a `true` significa cortar la pantalla confiando en una señal que no confirma entrega.
+El motivo está verificado: el envío exitoso devuelve `status: "PENDING"`, o sea encolado. `sent` solo dice que la API aceptó el mensaje, y sin webhooks documentados no hay manera de saber si llegó. Pasar a `true` significa cortar la pantalla confiando en una señal que nunca confirma entrega.
+
+La prueba del 2026-08-04 sí llegó al teléfono, lo que demuestra que el canal funciona. Una entrega comprobada no es lo mismo que entrega garantizada.
 
 Antes de activarlo, NODO7 debería comprobar a mano, sobre demos reales, que los mensajes efectivamente llegan. El cambio se hace en Vercel, sin redesplegar, y se revierte igual de rápido si aparecen quejas.
 
