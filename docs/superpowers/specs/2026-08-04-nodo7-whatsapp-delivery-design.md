@@ -88,6 +88,7 @@ Si no coincide con `WHATSAPP_EXPECTED_PHONE`, no se envía y el panel avisa. Con
 Revisadas las 156 páginas de documentación (140 endpoints de Web API en 16 grupos), faltan tres cosas que condicionan el diseño:
 
 1. **Ninguna respuesta de error está documentada.** Los ejemplos muestran solo el caso exitoso. No se sabe qué devuelve `/send` con la instancia caída, ni el formato del error, ni el código HTTP. La sección de Cloud API sí documenta sus errores; la Web API no.
+   Además, donde sí hay ejemplo puede estar equivocado: la respuesta real de `check_number` no se parece a la publicada (ver más abajo). Los ejemplos de la documentación se tratan como orientativos, no como contrato.
 2. **`set_webhook` no documenta los eventos** que entrega ni su estructura.
 3. **No hay límites de tasa, cuotas ni política de reintentos** en ninguna página.
 
@@ -96,6 +97,35 @@ Consecuencias:
 - El adaptador trata como fallo **todo lo que no sea** `status: "success"`, y parsea a la defensiva.
 - `delivery_status = 'sent'` significa **"la API aceptó el mensaje"**, no "el cliente lo recibió". Sin webhooks documentados no hay forma de confirmar la entrega.
 - Los límites de envío hay que preguntárselos a waclient antes de depender del canal.
+
+## Contrato real de `check_number`
+
+Verificado contra la API el 2026-08-04. **No coincide con la documentación**, que promete `data.results[]` con un campo `exists`.
+
+```json
+{ "status": "success",
+  "message": "WhatsApp number is valid",
+  "data": { "number": "...", "valid": true } }
+```
+
+| Caso | HTTP | `status` | `data.valid` |
+|---|---|---|---|
+| Número registrado | 200 | `success` | `true` |
+| Número no registrado | 200 | `success` | `false` |
+| Número malformado | 200 | `success` | `false` |
+| Falta el número | 400 | `error` | — |
+
+Acepta `numbers: []`, `number:` y una cadena separada por comas indistintamente, y siempre devuelve un objeto único.
+
+**Se lee `data.valid` y nunca `message`.** Con `123` como entrada, la API responde `"WhatsApp number is valid"` mientras `data.valid` es `false`: el texto contradice al dato.
+
+### La trampa de la instancia muerta
+
+Con un `instance_id` inexistente, la respuesta es `HTTP 200`, `status: "success"`, `valid: false`. **No hay error.**
+
+Si el `instance_id` está mal configurado o la sesión se cayó, `check_number` declara inválido a todo número que reciba. Cada visitante vería "tu número no está en WhatsApp", nadie podría generar una demo, y no quedaría registrado ni un error: un fallo total y silencioso que además culpa al usuario.
+
+Por eso **un `valid: false` solo se cree si la instancia está sana**. Antes de rechazar a nadie se confirma `connection_state === "connected"` con `instance_status`. Si la instancia no está conectada, no se valida y se deja pasar, igual que cuando `check_number` no responde: el visitante nunca paga por una falla nuestra.
 
 ## Base de datos
 
@@ -165,7 +195,8 @@ Hoy son 3 y cualquier envío mal formado consume uno, a propósito, para impedir
 | Situación | Resultado |
 |---|---|
 | Formato de teléfono inválido | Error en el formulario, no se llama a nadie |
-| `check_number` dice que no existe | Error visible, no se crea la demo |
+| `check_number` dice que no existe **y la instancia está conectada** | Error visible, no se crea la demo |
+| `check_number` dice que no existe **con la instancia caída** | Se ignora el veredicto y se genera igual: con la sesión muerta la API rechaza todo |
 | `check_number` no responde | Se continúa y se genera igual; no se puede castigar al visitante por una caída nuestra |
 | El número conectado no es el esperado | No se envía. `delivery_status = 'failed'` y aviso en el panel |
 | Envío falla o la instancia está desconectada | `delivery_status = 'failed'`, credenciales en pantalla |

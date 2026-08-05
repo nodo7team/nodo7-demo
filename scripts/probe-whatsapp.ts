@@ -100,9 +100,11 @@ async function main(): Promise<void> {
       cache: "no-store",
     });
     const payload = await response.json().catch(() => null);
-    const result = payload?.data?.results?.[0];
     console.log(`HTTP ${response.status} · status=${payload?.status ?? "?"}`);
-    console.log(`  ${mask(target)} → ${result ? `existe=${result.exists}` : "sin resultado"}`);
+    // The real contract is data.valid, not the documented data.results[].exists.
+    // The message string is unreliable: a malformed number still reports "valid".
+    console.log(`  ${mask(target)} → valid=${payload?.data?.valid ?? "sin dato"}`);
+    console.log("  (un instance_id muerto también devuelve valid=false, sin error)");
   } else if (!target) {
     console.log("\n(Pasá un número como argumento para probar check_number)");
   }
