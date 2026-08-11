@@ -2,6 +2,8 @@ import type {
   AccessCodeRecord,
   AccessCodeWithRequest,
   AdminCodeFilters,
+  AdminCustomerFilters,
+  DemoCustomerWithDemos,
   DemoRepository,
   DemoRequestRecord,
 } from "@/lib/demo/repository";
@@ -47,6 +49,9 @@ export interface DemoAccessService {
   }): Promise<{ token: string; deadline: string }>;
   getSessionView(token: string | null, now: Date): Promise<DemoSessionView>;
   listAdminCodes(filters: AdminCodeFilters): Promise<AccessCodeWithRequest[]>;
+  listAdminCustomers(
+    filters: AdminCustomerFilters,
+  ): Promise<DemoCustomerWithDemos[]>;
   revokeAdminCode(id: string): Promise<boolean>;
   cleanupDemoData(): Promise<{ expired: number; redacted: number }>;
 }
@@ -218,6 +223,10 @@ export function createDemoService(
 
     listAdminCodes(filters) {
       return repository.listCodes(filters);
+    },
+
+    listAdminCustomers(filters) {
+      return repository.listCustomers(filters);
     },
 
     revokeAdminCode(id) {

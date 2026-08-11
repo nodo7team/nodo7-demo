@@ -21,9 +21,13 @@ import { findCountry, maskPhone, normalizePhone } from "@/lib/whatsapp/phone";
 
 const GenerateSchema = z.object({
   name: z.string().trim().min(2).max(80),
+  email: z.string().trim().email().max(160),
   packageId: z.union([z.literal(6), z.literal(7)]),
   countryIso: z.string().trim().length(2),
   phone: z.string().trim().min(1),
+  // The contact details are kept past the audit window, so the visitor has to
+  // agree to that here. A request without it is rejected rather than stored.
+  consent: z.literal(true),
 });
 
 export interface DemoGenerationRepository {
@@ -31,11 +35,20 @@ export interface DemoGenerationRepository {
   findBySessionHash(
     sessionHash: string,
   ): Promise<AccessCodeWithRequest | null>;
+  upsertCustomer(input: {
+    phone: string;
+    email: string;
+    name: string;
+    countryIso: string | null;
+    consent: boolean;
+  }): Promise<string | null>;
   getOrCreateRequest(input: {
     accessCodeId: string;
+    customerId: string | null;
     name: string;
     packageId: DemoPackageId;
     phone: string | null;
+    email: string | null;
   }): Promise<{ record: DemoRequestRecord; created: boolean }>;
   recordDelivery(input: {
     requestId: string;
@@ -165,11 +178,29 @@ export function createDemoGenerator(
         }
       }
 
+      // The contact list is a by-product, never a gate: if it cannot be
+      // written the demo still goes out, and demo_requests keeps the same
+      // name, phone and email to rebuild the row from.
+      let customerId: string | null = null;
+      try {
+        customerId = await repository.upsertCustomer({
+          phone,
+          email: parsed.data.email,
+          name: parsed.data.name,
+          countryIso: country?.iso ?? null,
+          consent: parsed.data.consent,
+        });
+      } catch {
+        // Falls through with no customer link.
+      }
+
       const selected = await repository.getOrCreateRequest({
         accessCodeId: access.id,
+        customerId,
         name: parsed.data.name,
         packageId: parsed.data.packageId,
         phone,
+        email: parsed.data.email,
       });
       let request = selected.record;
       if (!selected.created) {

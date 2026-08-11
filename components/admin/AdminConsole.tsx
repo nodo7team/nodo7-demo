@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CodeGenerator } from "@/components/admin/CodeGenerator";
 import { CodeTable } from "@/components/admin/CodeTable";
+import { MetricsRow } from "@/components/admin/MetricsRow";
 import type { AdminCodeView } from "@/lib/demo/admin-client";
 import type {
   AccessCodeStatus,
@@ -79,6 +80,7 @@ export function AdminConsole({ initialCodes }: { initialCodes: AdminCodeView[] }
 
   return (
     <div className="ca-admin-console">
+      <MetricsRow codes={codes} />
       <CodeGenerator
         code={newCode}
         createdType={createdType}

@@ -49,7 +49,7 @@ npm.cmd run dev
 ## Supabase sin Docker
 
 1. Crea un proyecto nuevo en la cuenta de NODO7.
-2. En el SQL Editor, ejecuta las migraciones en orden: `0001_nodo7_demo_access.sql`, `0002_demo_credential_type.sql` y `0003_demo_whatsapp_delivery.sql`.
+2. En el SQL Editor, ejecuta las migraciones en orden: `0001_nodo7_demo_access.sql`, `0002_demo_credential_type.sql`, `0003_demo_whatsapp_delivery.sql` y `0004_demo_customers.sql`.
 3. Copia la URL del proyecto a `NEXT_PUBLIC_SUPABASE_URL`.
 4. Copia la clave `service_role` a `SUPABASE_SERVICE_ROLE_KEY` únicamente en `.env.local` y en las variables privadas de Vercel.
 
@@ -61,6 +61,25 @@ npx.cmd supabase db push
 ```
 
 No publiques la clave `service_role`, no la envíes por chat y no la subas a Git.
+
+## Base de clientes
+
+El formulario pide nombre, correo, WhatsApp y una aceptación explícita antes de
+generar la demo. Con eso la migración `0004` arma `demo_customers`, la lista de
+contactos que se ve en `/clientes`.
+
+El teléfono es la identidad: se valida contra WhatsApp antes de crear nada, así
+que es el único dato que se sabe que llega a una persona real. Quien vuelve a
+pedir otra demo con el mismo número es el mismo cliente con dos demos.
+
+Desde `0004` la limpieza programada **ya no borra el teléfono**. Los datos de
+contacto se guardan mientras el cliente lo haya aceptado; para dar de baja a
+alguien hay que borrar su fila de `demo_customers`. Todo lo demás sigue igual:
+las credenciales se borran a los 7 días o al vencer, y la IP de activación y el
+registro de intentos a los 90.
+
+Las demos anteriores a esta migración no se copian a la lista: a esos visitantes
+se les dijo que su número se borraría y nunca aceptaron que se los contactara.
 
 ## Entrega por WhatsApp
 

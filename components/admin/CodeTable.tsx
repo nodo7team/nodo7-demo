@@ -14,7 +14,7 @@ const STATUS_LABELS: Record<AdminCodeView["status"], string> = {
 };
 
 /** "Enviado" is what the panel accepted, not what the phone received. */
-const DELIVERY_LABELS: Record<
+export const DELIVERY_LABELS: Record<
   NonNullable<AdminCodeView["request"]>["deliveryStatus"],
   string
 > = {

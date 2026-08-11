@@ -6,6 +6,10 @@ import { DEMO_PACKAGES, findPackage } from "@/lib/demo/packages";
 import type { DemoPackageId } from "@/lib/demo/types";
 import { COUNTRY_CODES, findCountry, normalizePhone } from "@/lib/whatsapp/phone";
 
+/** Loose on purpose: the shape is worth catching, the rest is the mail server's
+ * job. The same check runs again on the server. */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 interface DemoSetupFormProps {
   busy: boolean;
   error: string | null;
@@ -14,9 +18,11 @@ interface DemoSetupFormProps {
   deliveryOnly: boolean;
   onSubmit(input: {
     name: string;
+    email: string;
     packageId: DemoPackageId;
     countryIso: string;
     phone: string;
+    consent: true;
   }): Promise<void>;
 }
 
@@ -27,21 +33,37 @@ export function DemoSetupForm({
   onSubmit,
 }: DemoSetupFormProps) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [countryIso, setCountryIso] = useState("US");
   const [phone, setPhone] = useState("");
   const [packageId, setPackageId] = useState<DemoPackageId | null>(null);
+  const [consent, setConsent] = useState(false);
 
   const dial = findCountry(countryIso)?.dial ?? "1";
   const normalized = useMemo(() => normalizePhone(dial, phone), [dial, phone]);
   const chosen = packageId === null ? null : findPackage(packageId);
+  const emailValid = EMAIL_PATTERN.test(email.trim());
+  const ready =
+    name.trim().length >= 2 &&
+    emailValid &&
+    Boolean(normalized) &&
+    packageId !== null &&
+    consent;
 
   return (
     <form
       className="ca-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (packageId && normalized) {
-          void onSubmit({ name: name.trim(), packageId, countryIso, phone });
+        if (packageId && normalized && consent && emailValid) {
+          void onSubmit({
+            name: name.trim(),
+            email: email.trim(),
+            packageId,
+            countryIso,
+            phone,
+            consent: true,
+          });
         }
       }}
     >
@@ -70,6 +92,25 @@ export function DemoSetupForm({
           disabled={busy}
           required
         />
+      </div>
+
+      <div className="ca-field">
+        <label htmlFor="visitor-email">Correo electrónico</label>
+        <input
+          id="visitor-email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="tucorreo@ejemplo.com"
+          maxLength={160}
+          autoComplete="email"
+          disabled={busy}
+          required
+        />
+        <small className="ca-hint">
+          Lo usamos para avisarte de novedades y promociones. La demo llega
+          igual por WhatsApp.
+        </small>
       </div>
 
       <div className="ca-field">
@@ -181,6 +222,21 @@ export function DemoSetupForm({
         </p>
       ) : null}
 
+      <div className="ca-consent">
+        <input
+          id="visitor-consent"
+          type="checkbox"
+          checked={consent}
+          onChange={(event) => setConsent(event.target.checked)}
+          disabled={busy}
+          required
+        />
+        <label htmlFor="visitor-consent">
+          Acepto que Nodo 7 OTT guarde mi nombre, WhatsApp y correo para
+          contactarme sobre el servicio.
+        </label>
+      </div>
+
       <p className="ca-footnote">
         <RotateCcw aria-hidden="true" size={15} />
         Recargar la página no reinicia el reloj ni te devuelve el pase.
@@ -191,7 +247,7 @@ export function DemoSetupForm({
       <button
         className="ca-button ca-button-primary"
         type="submit"
-        disabled={busy || name.trim().length < 2 || packageId === null || !normalized}
+        disabled={busy || !ready}
       >
         <span>{busy ? "Generando…" : "Generar mi demo"}</span>
         <Sparkles aria-hidden="true" size={19} />

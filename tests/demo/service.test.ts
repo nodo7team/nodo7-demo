@@ -8,6 +8,7 @@ import type {
   AccessCodeWithRequest,
   ActivationAttempt,
   AdminCodeFilters,
+  DemoCustomerWithDemos,
   DemoRepository,
 } from "@/lib/demo/repository";
 import { encryptCredential, hashSecret } from "@/lib/demo/secrets";
@@ -20,6 +21,7 @@ const NOW = new Date("2026-07-22T12:00:00.000Z");
 
 class InMemoryDemoRepository implements DemoRepository {
   records: AccessCodeWithRequest[] = [];
+  customers: DemoCustomerWithDemos[] = [];
   attempts: ActivationAttempt[] = [];
   failedAttempts = 0;
   failAttemptAudit = false;
@@ -99,6 +101,10 @@ class InMemoryDemoRepository implements DemoRepository {
     );
   }
 
+  async listCustomers(): Promise<DemoCustomerWithDemos[]> {
+    return this.customers;
+  }
+
   async revokeCode(id: string): Promise<boolean> {
     const record = this.records.find((candidate) => candidate.id === id);
     if (!record || !["pending", "active"].includes(record.status)) return false;
@@ -139,6 +145,8 @@ function makeUsedRecord(
     request: {
       id: "request-1",
       accessCodeId: "used-code",
+      customerId: "customer-1",
+      email: "cliente@ejemplo.com",
       name: "María",
       packageId: 7,
       providerIdempotencyKey: "00000000-0000-4000-8000-000000000001",

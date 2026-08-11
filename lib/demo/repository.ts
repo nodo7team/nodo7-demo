@@ -11,9 +11,11 @@ import type {
 export interface DemoRequestRecord {
   id: string;
   accessCodeId: string;
+  customerId: string | null;
   name: string;
   packageId: DemoPackageId;
   phone: string | null;
+  email: string | null;
   deliveryStatus: DemoDeliveryStatus;
   providerIdempotencyKey: string;
   status: DemoRequestStatus;
@@ -62,6 +64,35 @@ export interface AdminCodeFilters {
   limit?: number;
 }
 
+/** The contact list the portal builds, with consent, across every demo. */
+export interface DemoCustomerRecord {
+  id: string;
+  phone: string;
+  email: string;
+  name: string;
+  countryIso: string | null;
+  marketingConsent: boolean;
+  consentAt: string | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
+/** Only what the customer list needs to summarise a demo, never its secret. */
+export interface DemoCustomerDemo {
+  packageId: DemoPackageId;
+  status: DemoRequestStatus;
+  deliveryStatus: DemoDeliveryStatus;
+  createdAt: string;
+}
+
+export interface DemoCustomerWithDemos extends DemoCustomerRecord {
+  demos: DemoCustomerDemo[];
+}
+
+export interface AdminCustomerFilters {
+  limit?: number;
+}
+
 export interface DemoRepository {
   createCode(input: {
     codeHash: string;
@@ -80,6 +111,9 @@ export interface DemoRepository {
   ): Promise<AccessCodeWithRequest | null>;
   claimGenerationAttempt(sessionHash: string): Promise<number | null>;
   listCodes(filters: AdminCodeFilters): Promise<AccessCodeWithRequest[]>;
+  listCustomers(
+    filters: AdminCustomerFilters,
+  ): Promise<DemoCustomerWithDemos[]>;
   revokeCode(id: string): Promise<boolean>;
   expireSessions(): Promise<number>;
   redactAudit(): Promise<number>;
@@ -110,9 +144,11 @@ function mapRequest(row: DatabaseRow | null | undefined): DemoRequestRecord | nu
   return {
     id: row.id,
     accessCodeId: row.access_code_id,
+    customerId: row.customer_id ?? null,
     name: row.name,
     packageId: row.package_id,
     phone: row.phone ?? null,
+    email: row.email ?? null,
     deliveryStatus: row.delivery_status ?? "pending",
     providerIdempotencyKey: row.provider_idempotency_key,
     status: row.status,
@@ -156,6 +192,28 @@ function mapAccessCodeWithRequest(row: DatabaseRow): AccessCodeWithRequest {
   const relation = row.demo_requests;
   const request = Array.isArray(relation) ? relation[0] : relation;
   return { ...mapAccessCode(row), request: mapRequest(request) };
+}
+
+function mapCustomer(row: DatabaseRow): DemoCustomerWithDemos {
+  const relation = row.demo_requests;
+  const demos = Array.isArray(relation) ? relation : relation ? [relation] : [];
+  return {
+    id: row.id,
+    phone: row.phone,
+    email: row.email,
+    name: row.name,
+    countryIso: row.country_iso ?? null,
+    marketingConsent: row.marketing_consent === true,
+    consentAt: row.consent_at ?? null,
+    firstSeenAt: row.first_seen_at,
+    lastSeenAt: row.last_seen_at,
+    demos: demos.map((demo: DatabaseRow) => ({
+      packageId: demo.package_id,
+      status: demo.status,
+      deliveryStatus: demo.delivery_status ?? "pending",
+      createdAt: demo.created_at,
+    })),
+  };
 }
 
 export class SupabaseDemoRepository implements DemoRepository {
@@ -237,19 +295,42 @@ export class SupabaseDemoRepository implements DemoRepository {
     return typeof data === "number" ? data : null;
   }
 
+  /** Creates the customer or refreshes what we know, and returns their id. */
+  async upsertCustomer(input: {
+    phone: string;
+    email: string;
+    name: string;
+    countryIso: string | null;
+    consent: boolean;
+  }): Promise<string | null> {
+    const { data, error } = await this.client.rpc("upsert_demo_customer", {
+      p_phone: input.phone,
+      p_email: input.email,
+      p_name: input.name,
+      p_country_iso: input.countryIso,
+      p_consent: input.consent,
+    });
+    if (error) throw error;
+    return typeof data === "string" ? data : null;
+  }
+
   async getOrCreateRequest(input: {
     accessCodeId: string;
+    customerId: string | null;
     name: string;
     packageId: DemoPackageId;
     phone: string | null;
+    email: string | null;
   }): Promise<{ record: DemoRequestRecord; created: boolean }> {
     const inserted = await this.client
       .from("demo_requests")
       .insert({
         access_code_id: input.accessCodeId,
+        customer_id: input.customerId,
         name: input.name,
         package_id: input.packageId,
         phone: input.phone,
+        email: input.email,
       })
       .select("*")
       .maybeSingle();
@@ -364,6 +445,25 @@ export class SupabaseDemoRepository implements DemoRepository {
     const { data, error } = await query;
     if (error) throw error;
     return (data ?? []).map(mapAccessCodeWithRequest);
+  }
+
+  /**
+   * The whole list comes back and the console filters it in the browser: the
+   * search box would otherwise have to be spliced into a PostgREST `or`
+   * expression, where a comma or a parenthesis changes what is being asked.
+   */
+  async listCustomers(
+    filters: AdminCustomerFilters,
+  ): Promise<DemoCustomerWithDemos[]> {
+    const { data, error } = await this.client
+      .from("demo_customers")
+      .select(
+        "*, demo_requests(package_id, status, delivery_status, created_at)",
+      )
+      .order("last_seen_at", { ascending: false })
+      .limit(filters.limit ?? 500);
+    if (error) throw error;
+    return (data ?? []).map(mapCustomer);
   }
 
   async revokeCode(id: string): Promise<boolean> {

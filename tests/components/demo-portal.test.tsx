@@ -39,7 +39,7 @@ describe("NODO7 demo portal", () => {
     );
     await user.click(screen.getByRole("button", { name: /continuar/i }));
 
-    expect(await screen.findByLabelText(/nombre/i)).toBeVisible();
+    expect(await screen.findByLabelText("Nombre")).toBeVisible();
     expect(
       screen.getByRole("radio", { name: /1 hora full/i }),
     ).toBeVisible();
@@ -47,7 +47,7 @@ describe("NODO7 demo portal", () => {
     expect(screen.getByText(/10:00|09:59/)).toBeVisible();
   });
 
-  it("requires a name, a reachable phone and one package before generating", async () => {
+  it("requires every field, a reachable phone and consent before generating", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(jsonResponse({ state: "setup" })),
@@ -65,17 +65,28 @@ describe("NODO7 demo portal", () => {
     );
     const button = screen.getByRole("button", { name: /generar mi demo/i });
     expect(button).toBeDisabled();
-    await user.type(screen.getByLabelText(/nombre/i), "María");
+    await user.type(screen.getByLabelText("Nombre"), "María");
     expect(button).toBeDisabled();
     await user.click(screen.getByRole("radio", { name: /1 hora full/i }));
     expect(button).toBeDisabled();
 
     // Too short to be a real number, so it must not unlock the button.
-    await user.type(screen.getByLabelText(/whatsapp/i), "123");
+    await user.type(screen.getByLabelText("WhatsApp"), "123");
     expect(button).toBeDisabled();
 
-    await user.clear(screen.getByLabelText(/whatsapp/i));
-    await user.type(screen.getByLabelText(/whatsapp/i), "3465551234");
+    await user.clear(screen.getByLabelText("WhatsApp"));
+    await user.type(screen.getByLabelText("WhatsApp"), "3465551234");
+    expect(button).toBeDisabled();
+
+    // An address that cannot receive anything must not unlock it either.
+    await user.type(screen.getByLabelText("Correo electrónico"), "maria(at)ejemplo");
+    expect(button).toBeDisabled();
+
+    await user.clear(screen.getByLabelText("Correo electrónico"));
+    await user.type(screen.getByLabelText("Correo electrónico"), "maria@ejemplo.com");
+    expect(button).toBeDisabled();
+
+    await user.click(screen.getByRole("checkbox"));
     expect(button).toBeEnabled();
   });
 
@@ -111,9 +122,14 @@ describe("NODO7 demo portal", () => {
         }}
       />,
     );
-    await user.type(screen.getByLabelText(/nombre/i), "María");
-    await user.type(screen.getByLabelText(/whatsapp/i), "3465551234");
+    await user.type(screen.getByLabelText("Nombre"), "María");
+    await user.type(
+      screen.getByLabelText("Correo electrónico"),
+      "maria@ejemplo.com",
+    );
+    await user.type(screen.getByLabelText("WhatsApp"), "3465551234");
     await user.click(screen.getByRole("radio", { name: /1 hora full/i }));
+    await user.click(screen.getByRole("checkbox"));
     const button = screen.getByRole("button", { name: /generar mi demo/i });
     await user.click(button);
     expect(button).toBeDisabled();
@@ -210,9 +226,14 @@ describe("NODO7 demo portal", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText(/nombre/i), "María");
-    await user.type(screen.getByLabelText(/whatsapp/i), "(346) 555-1234");
+    await user.type(screen.getByLabelText("Nombre"), "María");
+    await user.type(
+      screen.getByLabelText("Correo electrónico"),
+      "maria@ejemplo.com",
+    );
+    await user.type(screen.getByLabelText("WhatsApp"), "(346) 555-1234");
     await user.click(screen.getByRole("radio", { name: /1 hora full/i }));
+    await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: /generar mi demo/i }));
 
     const call = fetchMock.mock.calls.find((c) =>
@@ -220,9 +241,11 @@ describe("NODO7 demo portal", () => {
     );
     expect(JSON.parse(String(call![1].body))).toEqual({
       name: "María",
+      email: "maria@ejemplo.com",
       packageId: 7,
       countryIso: "US",
       phone: "(346) 555-1234",
+      consent: true,
     });
     expect(await screen.findByText(/te lo enviamos/i)).toBeVisible();
   });

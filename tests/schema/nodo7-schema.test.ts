@@ -21,6 +21,13 @@ function whatsappMigration(): string {
   ).toLowerCase();
 }
 
+function customersMigration(): string {
+  return readFileSync(
+    "supabase/migrations/0004_demo_customers.sql",
+    "utf8",
+  ).toLowerCase();
+}
+
 describe("NODO7 schema", () => {
   it("contains only the demo domain tables", () => {
     expect(sql).toContain("create table demo_access_codes");
@@ -99,5 +106,49 @@ describe("NODO7 WhatsApp delivery migration", () => {
     const migration = whatsappMigration();
     expect(migration).toContain("provider_expires_at is null");
     expect(migration).toContain("interval '7 days'");
+  });
+});
+
+describe("NODO7 customer list migration", () => {
+  it("keys the customer by the phone that WhatsApp already validated", () => {
+    const migration = customersMigration();
+    expect(migration).toContain("create table demo_customers");
+    expect(migration).toContain("phone text not null unique");
+    expect(migration).toContain("email text not null");
+    expect(migration).toContain("marketing_consent boolean not null");
+  });
+
+  it("links every demo to its customer without losing the audit row", () => {
+    const migration = customersMigration();
+    expect(migration).toContain("alter table demo_requests");
+    expect(migration).toContain(
+      "customer_id uuid references demo_customers(id) on delete set null",
+    );
+    expect(migration).toContain("add column");
+  });
+
+  it("keeps the browser roles away from the contact list", () => {
+    const migration = customersMigration();
+    expect(migration).toContain("alter table demo_customers enable row level security");
+    expect(migration).toContain("revoke all on table demo_customers from anon, authenticated");
+    expect(migration).toContain("grant all on table demo_customers to service_role");
+    expect(migration).toContain("revoke all on function upsert_demo_customer");
+  });
+
+  it("stops erasing the phone now that consent decides how long it stays", () => {
+    const migration = customersMigration();
+    expect(migration).toContain("create or replace function redact_demo_audit");
+    expect(migration).not.toContain("set phone = null");
+  });
+
+  it("still clears the credentials, the activation ip and the attempt log", () => {
+    // Redefining redact_demo_audit must not drop any earlier rule but the phone.
+    const migration = customersMigration();
+    expect(migration).toContain("password_ciphertext = null");
+    expect(migration).toContain("provider_expires_at is null");
+    expect(migration).toContain("interval '7 days'");
+    expect(migration).toContain("set activation_ip = null");
+    expect(migration).toContain("delete from demo_activation_attempts");
+    expect(migration).toContain("interval '90 days'");
   });
 });

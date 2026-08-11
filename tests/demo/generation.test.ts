@@ -21,11 +21,21 @@ import type { WhatsAppClient } from "@/lib/whatsapp/client";
 const NOW = new Date("2026-07-22T12:00:00.000Z");
 const TOKEN = "opaque-session-token";
 
+interface UpsertedCustomer {
+  phone: string;
+  email: string;
+  name: string;
+  countryIso: string | null;
+  consent: boolean;
+}
+
 class GenerationRepositoryDouble implements DemoGenerationRepository {
   attemptCount = 0;
   request: DemoRequestRecord | null = null;
   completedPassword: DemoRequestRecord["password"] = null;
   failCompletion = false;
+  failCustomerUpsert = false;
+  customers: UpsertedCustomer[] = [];
   now = NOW;
   access: AccessCodeWithRequest;
 
@@ -70,19 +80,35 @@ class GenerationRepositoryDouble implements DemoGenerationRepository {
     return { ...this.access, request: this.request };
   }
 
+  async upsertCustomer(input: {
+    phone: string;
+    email: string;
+    name: string;
+    countryIso: string | null;
+    consent: boolean;
+  }): Promise<string | null> {
+    if (this.failCustomerUpsert) throw new Error("customer table unavailable");
+    this.customers.push(input);
+    return "customer-1";
+  }
+
   async getOrCreateRequest(input: {
     accessCodeId: string;
+    customerId: string | null;
     name: string;
     packageId: 6 | 7;
-    phone: string;
+    phone: string | null;
+    email: string | null;
   }): Promise<{ record: DemoRequestRecord; created: boolean }> {
     if (this.request) return { record: this.request, created: false };
     this.request = {
       id: "request-1",
       accessCodeId: input.accessCodeId,
+      customerId: input.customerId,
       name: input.name,
       packageId: input.packageId,
       phone: input.phone,
+      email: input.email,
       deliveryStatus: "pending",
       providerIdempotencyKey: "00000000-0000-4000-8000-000000000001",
       status: "creating",
@@ -193,7 +219,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
+        body: { name: "María", packageId: 7, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).resolves.toMatchObject({
@@ -217,6 +243,82 @@ describe("demo generation", () => {
     expect(repository.access.status).toBe("used");
   });
 
+  it("files the visitor in the customer list with the country they picked", async () => {
+    const generator = createDemoGenerator(repository, successfulProvider());
+    await generator.generateDemoForSession({
+      token: TOKEN,
+      body: {
+        name: "María",
+        email: "cliente@ejemplo.com",
+        packageId: 7 as const,
+        consent: true,
+        countryIso: "AR",
+        phone: "3465551234",
+      },
+      now: NOW,
+    });
+    expect(repository.customers).toEqual([
+      {
+        phone: "5493465551234",
+        email: "cliente@ejemplo.com",
+        name: "María",
+        countryIso: "AR",
+        consent: true,
+      },
+    ]);
+    expect(repository.request?.customerId).toBe("customer-1");
+    expect(repository.request?.email).toBe("cliente@ejemplo.com");
+  });
+
+  it.each([
+    ["no consent", { consent: false }],
+    ["a missing consent", { consent: undefined }],
+    ["an unusable email", { email: "maria(at)ejemplo" }],
+    ["no email", { email: undefined }],
+  ])("refuses a submission with %s", async (_label, override) => {
+    const provider = successfulProvider();
+    const generator = createDemoGenerator(repository, provider);
+    await expect(
+      generator.generateDemoForSession({
+        token: TOKEN,
+        body: {
+          name: "María",
+          email: "cliente@ejemplo.com",
+          packageId: 7 as const,
+          consent: true,
+          countryIso: "US",
+          phone: "3465551234",
+          ...override,
+        },
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ publicCode: "INVALID_REQUEST" });
+    expect(provider.createDemo).not.toHaveBeenCalled();
+    expect(repository.customers).toHaveLength(0);
+  });
+
+  it("still delivers the demo when the customer list cannot be written", async () => {
+    repository.failCustomerUpsert = true;
+    const generator = createDemoGenerator(repository, successfulProvider());
+    await expect(
+      generator.generateDemoForSession({
+        token: TOKEN,
+        body: {
+          name: "María",
+          email: "cliente@ejemplo.com",
+          packageId: 7 as const,
+          consent: true,
+          countryIso: "US",
+          phone: "3465551234",
+        },
+        now: NOW,
+      }),
+    ).resolves.toMatchObject({ kind: "line" });
+    // The link is lost, but demo_requests still holds enough to rebuild it.
+    expect(repository.request?.customerId).toBeNull();
+    expect(repository.request?.email).toBe("cliente@ejemplo.com");
+  });
+
   it("stores an activation code as the secret and leaves the username empty", async () => {
     repository.access.credentialType = "activecode";
     const createDemo = vi.fn().mockResolvedValue({
@@ -231,7 +333,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
+        body: { name: "María", packageId: 7, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).resolves.toMatchObject({
@@ -252,7 +354,7 @@ describe("demo generation", () => {
 
   const setup = {
     token: TOKEN,
-    body: { name: "María", packageId: 7, countryIso: "US", phone: "(346) 555-1234" },
+    body: { name: "María", packageId: 7, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "(346) 555-1234" },
     now: NOW,
   };
 
@@ -458,7 +560,7 @@ describe("demo generation", () => {
     const generator = createDemoGenerator(repository, { createDemo });
     const input = {
       token: TOKEN,
-      body: { name: "Juan", packageId: 6 as const, countryIso: "US", phone: "3465551234" },
+      body: { name: "Juan", packageId: 6 as const, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
       now: NOW,
     };
 
@@ -481,7 +583,7 @@ describe("demo generation", () => {
       await expect(
         generator.generateDemoForSession({
           token: TOKEN,
-          body: { name: "x", packageId: 99, countryIso: "US", phone: "3465551234" },
+          body: { name: "x", packageId: 99, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
           now: NOW,
         }),
       ).rejects.toMatchObject({ publicCode: "INVALID_REQUEST" });
@@ -489,7 +591,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
+        body: { name: "María", packageId: 7, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).rejects.toMatchObject({ publicCode: "SESSION_UNAVAILABLE" });
@@ -503,7 +605,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
+        body: { name: "María", packageId: 7, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
         now: repository.now,
       }),
     ).rejects.toMatchObject({ publicCode: "SESSION_UNAVAILABLE" });
@@ -517,7 +619,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
+        body: { name: "María", packageId: 7, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).rejects.toMatchObject({ publicCode: "SESSION_UNAVAILABLE" });
@@ -529,7 +631,7 @@ describe("demo generation", () => {
     const generator = createDemoGenerator(repository, { createDemo });
     const input = {
       token: TOKEN,
-      body: { name: "María", packageId: 7 as const, countryIso: "US", phone: "3465551234" },
+      body: { name: "María", packageId: 7 as const, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
       now: NOW,
     };
     await expect(generator.generateDemoForSession(input)).rejects.toMatchObject({
@@ -549,7 +651,7 @@ describe("demo generation", () => {
     await expect(
       generator.generateDemoForSession({
         token: TOKEN,
-        body: { name: "María", packageId: 7, countryIso: "US", phone: "3465551234" },
+        body: { name: "María", packageId: 7, email: "cliente@ejemplo.com", consent: true, countryIso: "US", phone: "3465551234" },
         now: NOW,
       }),
     ).rejects.toMatchObject({ publicCode: "OUTCOME_UNKNOWN" });

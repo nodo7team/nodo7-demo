@@ -83,9 +83,11 @@ export function DemoPortal({ initialSession }: { initialSession: DemoSessionView
 
   async function generate(input: {
     name: string;
+    email: string;
     packageId: DemoPackageId;
     countryIso: string;
     phone: string;
+    consent: true;
   }) {
     if (state.kind !== "setup") return;
     setBusy(true);
