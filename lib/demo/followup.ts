@@ -24,14 +24,17 @@ const SPACING_MS = 2_000;
  * across the Americas — roughly 23:00–09:00 in Argentina and 21:00–07:00 in
  * Colombia — and is meant to be narrowed once the main market is settled.
  */
+function hourOr(raw: string | undefined, fallback: number): number {
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 0 && value <= 23 ? value : fallback;
+}
+
 function quietHoursUtc(): { from: number; to: number } {
-  const read = (name: string, fallback: number) => {
-    const value = Number(process.env[name]);
-    return Number.isInteger(value) && value >= 0 && value <= 23 ? value : fallback;
-  };
+  // Read by name, not through a computed key: a dynamic lookup hides the
+  // variable from every tool that greps the codebase for its configuration.
   return {
-    from: read("FOLLOWUP_QUIET_FROM_UTC", 2),
-    to: read("FOLLOWUP_QUIET_TO_UTC", 12),
+    from: hourOr(process.env.FOLLOWUP_QUIET_FROM_UTC, 2),
+    to: hourOr(process.env.FOLLOWUP_QUIET_TO_UTC, 12),
   };
 }
 
