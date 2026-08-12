@@ -62,6 +62,33 @@ npx.cmd supabase db push
 
 No publiques la clave `service_role`, no la envíes por chat y no la subas a Git.
 
+## Números de teléfono
+
+`libphonenumber-js` valida y normaliza, con dos reglas propias encima.
+
+**El país se identifica por su código ISO, nunca por su código de marcado.**
+Cada territorio del Caribe comparte el `+1` con Estados Unidos, y 809, 829 o
+787 son códigos de **área** que viajan dentro del número nacional. Guardarlos
+como si fueran el código del país hacía que se antepusieran a números que ya
+traían el suyo: un dominicano terminaba en `18098295551234`, catorce dígitos
+que no llegan a nadie.
+
+**El 9 de los móviles argentinos se agrega a mano.** libphonenumber acepta
+`+54 346...` como válido, pero WhatsApp enruta esa forma y `+54 9 346...` a
+destinatarios distintos. Los tests de `tests/whatsapp/phone.test.ts` fijan ese
+comportamiento; si se rompen, las credenciales le llegan a un desconocido.
+
+`lib/whatsapp/countries.ts` y `public/flags/*.webp` son artefactos generados.
+Para rehacerlos tras actualizar libphonenumber:
+
+```powershell
+npm.cmd i -D flag-icons
+node scripts/generate-country-data.mjs
+```
+
+No edites la tabla a mano: el código de marcado tiene que salir siempre de
+libphonenumber.
+
 ## Base de clientes
 
 El formulario pide nombre, correo, WhatsApp y una aceptación explícita antes de

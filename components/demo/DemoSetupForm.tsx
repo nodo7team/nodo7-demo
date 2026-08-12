@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, RotateCcw, Sparkles, TriangleAlert, X } from "lucide-react";
+import { CountryPicker } from "@/components/demo/CountryPicker";
 import { DEMO_PACKAGES, findPackage } from "@/lib/demo/packages";
 import type { DemoPackageId } from "@/lib/demo/types";
-import { COUNTRY_CODES, findCountry, normalizePhone } from "@/lib/whatsapp/phone";
+import { detectCountry, formatPhone, normalizePhone } from "@/lib/whatsapp/phone";
 
 /** Loose on purpose: the shape is worth catching, the rest is the mail server's
  * job. The same check runs again on the server. */
@@ -39,9 +40,18 @@ export function DemoSetupForm({
   const [packageId, setPackageId] = useState<DemoPackageId | null>(null);
   const [consent, setConsent] = useState(false);
 
-  const dial = findCountry(countryIso)?.dial ?? "1";
-  const normalized = useMemo(() => normalizePhone(dial, phone), [dial, phone]);
+  const normalized = useMemo(
+    () => normalizePhone(countryIso, phone),
+    [countryIso, phone],
+  );
   const chosen = packageId === null ? null : findPackage(packageId);
+
+  // A Dominican who picked Puerto Rico gets their flag corrected instead of an
+  // argument: the number itself says which territory it belongs to.
+  useEffect(() => {
+    const belongs = detectCountry(countryIso, phone);
+    if (belongs) setCountryIso(belongs);
+  }, [countryIso, phone]);
   const emailValid = EMAIL_PATTERN.test(email.trim());
   const ready =
     name.trim().length >= 2 &&
@@ -116,19 +126,11 @@ export function DemoSetupForm({
       <div className="ca-field">
         <label htmlFor="visitor-phone">WhatsApp</label>
         <div className="ca-phone-row">
-          <select
-            aria-label="País"
+          <CountryPicker
             value={countryIso}
-            onChange={(event) => setCountryIso(event.target.value)}
             disabled={busy}
-          >
-            {/* No flag emoji: Windows renders the pair as bare letters. */}
-            {COUNTRY_CODES.map((country) => (
-              <option key={country.iso} value={country.iso}>
-                +{country.dial} · {country.name}
-              </option>
-            ))}
-          </select>
+            onChange={setCountryIso}
+          />
           <input
             id="visitor-phone"
             value={phone}
@@ -144,7 +146,7 @@ export function DemoSetupForm({
           {normalized ? (
             <>
               <Check aria-hidden="true" size={15} />
-              Enviaremos tu acceso a <b>+{dial} {normalized.slice(dial.length)}</b>
+              Enviaremos tu acceso a <b>{formatPhone(normalized)}</b>
             </>
           ) : (
             "Elige tu país y escribe el número tal como lo usas en WhatsApp."

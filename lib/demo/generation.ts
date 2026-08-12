@@ -147,11 +147,12 @@ export function createDemoGenerator(
         throw new DemoGenerationError("INVALID_REQUEST", 400);
       }
 
-      const country = findCountry(parsed.data.countryIso.toUpperCase());
-      const phone = country
-        ? normalizePhone(country.dial, parsed.data.phone)
-        : null;
-      if (!phone) {
+      // The ISO code decides, never the calling code: every Caribbean
+      // territory shares +1 with the United States.
+      const countryIso = parsed.data.countryIso.toUpperCase();
+      const country = findCountry(countryIso);
+      const phone = normalizePhone(countryIso, parsed.data.phone);
+      if (!country || !phone) {
         throw new DemoGenerationError("INVALID_REQUEST", 400);
       }
 

@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { MessageCircle, RotateCw, Search, ShieldOff } from "lucide-react";
 import { DELIVERY_LABELS } from "@/components/admin/CodeTable";
 import {
-  displayPhone,
   matchesCustomer,
   whatsappLink,
   type AdminCustomerView,
 } from "@/lib/demo/customers";
 import { packageName } from "@/lib/demo/packages";
+import { formatPhone } from "@/lib/whatsapp/phone";
 
 function date(value: string | null): string {
   if (!value) return "—";
@@ -89,7 +89,7 @@ export function CustomerTable({
                   </td>
                   <td>
                     <strong className="ca-admin-phone">
-                      {displayPhone(customer.phone, customer.countryIso)}
+                      {formatPhone(customer.phone)}
                     </strong>
                     <small>
                       {customer.lastDeliveryStatus

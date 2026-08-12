@@ -44,7 +44,12 @@ describe("NODO7 demo portal", () => {
       screen.getByRole("radio", { name: /1 hora full/i }),
     ).toBeVisible();
     expect(screen.getByRole("radio", { name: /4 horas/i })).toBeVisible();
-    expect(screen.getByText(/10:00|09:59/)).toBeVisible();
+
+    // That the clock is running, not which second it reads: pinning the exact
+    // value made this fail whenever the suite itself ran a little slower.
+    const timer = screen.getByRole("timer");
+    expect(timer).toHaveTextContent(/\d\d:\d\d/);
+    expect(timer).not.toHaveTextContent("--:--");
   });
 
   it("requires every field, a reachable phone and consent before generating", async () => {
@@ -88,6 +93,67 @@ describe("NODO7 demo portal", () => {
 
     await user.click(screen.getByRole("checkbox"));
     expect(button).toBeEnabled();
+  });
+
+  /**
+   * The area code used to be treated as part of the calling code, so a
+   * Dominican number came out as 1809 + 8095551234 and reached nobody.
+   */
+  it("accepts a Dominican number with its own area code", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ state: "setup" })),
+    );
+    const user = userEvent.setup();
+    render(
+      <DemoPortal
+        initialSession={{
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+          deliveryOnly: false,
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /país/i }));
+    await user.type(screen.getByRole("textbox", { name: /buscar país/i }), "809");
+    await user.click(
+      screen.getByRole("option", { name: /república dominicana/i }),
+    );
+    await user.type(screen.getByLabelText("WhatsApp"), "8295551234");
+
+    expect(await screen.findByText("+1 829 555 1234")).toBeVisible();
+  });
+
+  it("follows the number when it belongs to another +1 territory", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ state: "setup" })),
+    );
+    const user = userEvent.setup();
+    render(
+      <DemoPortal
+        initialSession={{
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+          deliveryOnly: false,
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /país/i }));
+    await user.type(screen.getByRole("textbox", { name: /buscar país/i }), "809");
+    await user.click(
+      screen.getByRole("option", { name: /república dominicana/i }),
+    );
+    // A Puerto Rican area code: the picker corrects itself instead of arguing.
+    await user.type(screen.getByLabelText("WhatsApp"), "7875551234");
+
+    expect(
+      await screen.findByRole("button", { name: /país: puerto rico/i }),
+    ).toBeVisible();
   });
 
   it("submits once, disables generation, and shows credentials", async () => {

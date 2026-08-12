@@ -1,7 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
-  displayPhone,
   matchesCustomer,
   toAdminCustomerView,
   whatsappLink,
@@ -109,15 +108,6 @@ describe("customer list view", () => {
     expect(whatsappLink("5493465551234")).toBe("https://wa.me/5493465551234");
   });
 
-  it("shows the dial code apart without inventing a national grouping", () => {
-    expect(displayPhone("5493465551234", "AR")).toBe("+54 93465551234");
-    expect(displayPhone("13465559876", "US")).toBe("+1 3465559876");
-    // Argentina and the United States both start with digits Canada shares, so
-    // the stored country wins over guessing from the number.
-    expect(displayPhone("13465559876", null)).toBe("+1 3465559876");
-    // A number that matches no dial code is still shown in full.
-    expect(displayPhone("99999999999", null)).toBe("+99999999999");
-  });
 
   it("finds a customer by name, address, country or part of the number", () => {
     const view = toAdminCustomerView(customer());
