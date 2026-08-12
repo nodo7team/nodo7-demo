@@ -12,6 +12,8 @@ export interface DemoPackage {
   name: string;
   badge: string;
   duration: string;
+  /** How long the demo runs. The follow-up needs a number, not prose. */
+  minutes: number;
   tagline: string;
   includes: string[];
   excludes: string[];
@@ -23,6 +25,7 @@ export const DEMO_PACKAGES: readonly DemoPackage[] = [
     name: "1 hora FULL",
     badge: "TODO INCLUIDO",
     duration: "60 minutos",
+    minutes: 60,
     tagline: "La grilla entera, sin nada bloqueado.",
     includes: [
       "Fútbol en vivo, todas las ligas",
@@ -37,6 +40,7 @@ export const DEMO_PACKAGES: readonly DemoPackage[] = [
     name: "4 horas",
     badge: "SIN DEPORTES NI PREMIUM",
     duration: "240 minutos",
+    minutes: 240,
     tagline: "Más tiempo, pero con la grilla recortada.",
     includes: [
       "Canales generales de entretenimiento",

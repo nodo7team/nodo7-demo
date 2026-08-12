@@ -12,8 +12,14 @@ const PUBLIC_EXACT = new Set([
   "/api/demo/generate",
 ]);
 
+/** Vercel calls these unauthenticated; each one checks CRON_SECRET itself. */
+const PUBLIC_CRONS = new Set([
+  "/api/cron/demo-cleanup",
+  "/api/cron/demo-followup",
+]);
+
 export function isPublicPath(pathname: string): boolean {
-  return PUBLIC_EXACT.has(pathname) || pathname === "/api/cron/demo-cleanup";
+  return PUBLIC_EXACT.has(pathname) || PUBLIC_CRONS.has(pathname);
 }
 
 export async function proxy(request: NextRequest) {

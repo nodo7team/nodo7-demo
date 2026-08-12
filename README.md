@@ -49,7 +49,7 @@ npm.cmd run dev
 ## Supabase sin Docker
 
 1. Crea un proyecto nuevo en la cuenta de NODO7.
-2. En el SQL Editor, ejecuta las migraciones en orden: `0001_nodo7_demo_access.sql`, `0002_demo_credential_type.sql`, `0003_demo_whatsapp_delivery.sql` y `0004_demo_customers.sql`.
+2. En el SQL Editor, ejecuta las migraciones en orden: `0001_nodo7_demo_access.sql`, `0002_demo_credential_type.sql`, `0003_demo_whatsapp_delivery.sql`, `0004_demo_customers.sql` y `0005_demo_followup.sql`.
 3. Copia la URL del proyecto a `NEXT_PUBLIC_SUPABASE_URL`.
 4. Copia la clave `service_role` a `SUPABASE_SERVICE_ROLE_KEY` únicamente en `.env.local` y en las variables privadas de Vercel.
 
@@ -61,6 +61,44 @@ npx.cmd supabase db push
 ```
 
 No publiques la clave `service_role`, no la envíes por chat y no la subas a Git.
+
+## Seguimiento posterior a la demo
+
+Cuando la demo se apaga, un cron cada quince minutos (`/api/cron/demo-followup`)
+pregunta por WhatsApp cómo le fue. Solo pregunta: no menciona precios.
+
+Escribe a quien cumpla **todo**: la demo se creó bien, el WhatsApp de entrega
+llegó, el cliente aceptó que lo contacten y nunca se le escribió antes.
+
+Cuándo terminó la demo depende del tipo. Una línea trae su vencimiento del
+panel; un código de activación no trae ninguno, porque el reloj arranca cuando
+el cliente lo canjea y el panel nunca lo informa. Para esos se estima: entrega
+más una hora de gracia más la duración del paquete.
+
+Tres cosas protegen el número, que es lo más frágil de todo esto:
+
+- **Como máximo 15 mensajes por corrida**, espaciados. waclient maneja WhatsApp
+  Web, no la API oficial, y una ráfaga es la forma más rápida de que bloqueen la
+  línea. A cuatro corridas por hora igual salen sesenta.
+- **Horario de silencio** (`FOLLOWUP_QUIET_FROM_UTC` / `_TO_UTC`, por defecto 2
+  a 12 UTC). Un mensaje de madrugada quema al cliente.
+- **Nunca reintenta.** La fila se marca *antes* de enviar: si la corrida muere a
+  la mitad, ese seguimiento se pierde. Un mensaje repetido molesta más que uno
+  faltante.
+
+Los textos se cambian con `WHATSAPP_FOLLOWUP_FULL` y `WHATSAPP_FOLLOWUP_LITE`,
+sin desplegar. Son distintos a propósito: preguntarle por el fútbol a quien tuvo
+la demo de 4 horas sería preguntarle por algo que esa demo nunca le mostró.
+
+## Horarios en los mensajes
+
+El mensaje de credenciales dice **cuánto falta**, nunca una hora del reloj. El
+servidor corre en UTC y no sabe dónde está el visitante: decirle a un argentino
+que su demo vence a las 18:00 cuando su reloj marca las 15:00 le regala tres
+horas que no existen.
+
+En pantalla sí se muestra la hora, porque ahí el navegador conoce la zona
+horaria real del cliente.
 
 ## Números de teléfono
 

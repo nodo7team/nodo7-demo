@@ -28,6 +28,13 @@ function customersMigration(): string {
   ).toLowerCase();
 }
 
+function followupMigration(): string {
+  return readFileSync(
+    "supabase/migrations/0005_demo_followup.sql",
+    "utf8",
+  ).toLowerCase();
+}
+
 describe("NODO7 schema", () => {
   it("contains only the demo domain tables", () => {
     expect(sql).toContain("create table demo_access_codes");
@@ -150,5 +157,43 @@ describe("NODO7 customer list migration", () => {
     expect(migration).toContain("set activation_ip = null");
     expect(migration).toContain("delete from demo_activation_attempts");
     expect(migration).toContain("interval '90 days'");
+  });
+});
+
+describe("NODO7 follow-up migration", () => {
+  it("remembers who was already written to", () => {
+    const migration = followupMigration();
+    expect(migration).toContain("alter table demo_requests");
+    expect(migration).toContain("followup_sent_at timestamptz");
+    expect(migration).toContain(
+      "check (followup_status in ('sent', 'failed'))",
+    );
+  });
+
+  it("claims a row before the message leaves, so two runs cannot both send", () => {
+    const migration = followupMigration();
+    expect(migration).toContain("create or replace function claim_demo_followups");
+    expect(migration).toContain("and followup_sent_at is null");
+    expect(migration).toContain("returning id");
+  });
+
+  it("keeps the browser roles away from the scheduled job", () => {
+    const migration = followupMigration();
+    expect(migration).toContain("revoke all on function claim_demo_followups");
+    expect(migration).toContain("revoke all on function record_demo_followup");
+    expect(migration).toContain("to service_role");
+  });
+
+  it("still clears everything the earlier migrations cleared", () => {
+    // Redefining redact_demo_audit must not quietly drop an older rule.
+    const migration = followupMigration();
+    expect(migration).toContain("create or replace function redact_demo_audit");
+    expect(migration).toContain("password_ciphertext = null");
+    expect(migration).toContain("interval '7 days'");
+    expect(migration).toContain("set activation_ip = null");
+    expect(migration).toContain("delete from demo_activation_attempts");
+    expect(migration).toContain("interval '90 days'");
+    // The phone stays: consent, not a timer, decides how long it lives.
+    expect(migration).not.toContain("set phone = null");
   });
 });

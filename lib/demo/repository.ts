@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { FollowupCandidate } from "@/lib/demo/followup";
 import type {
   AccessCodeStatus,
   DemoCredentialType,
@@ -482,6 +483,63 @@ export class SupabaseDemoRepository implements DemoRepository {
     const { data, error } = await this.client.rpc("expire_demo_sessions");
     if (error) throw error;
     return Number(data ?? 0);
+  }
+
+  /**
+   * Demos that were delivered and never followed up. The consent lives on the
+   * customer, so a request with no customer row — anything from before that
+   * table existed — simply never matches.
+   */
+  async listFollowupCandidates(limit: number): Promise<FollowupCandidate[]> {
+    const { data, error } = await this.client
+      .from("demo_requests")
+      .select(
+        "id, name, phone, package_id, completed_at, provider_expires_at," +
+          " demo_customers(marketing_consent)",
+      )
+      .eq("status", "ok")
+      .eq("delivery_status", "sent")
+      .is("followup_sent_at", null)
+      .not("phone", "is", null)
+      .order("completed_at", { ascending: true })
+      .limit(limit);
+    if (error) throw error;
+
+    return (data ?? []).map((row: DatabaseRow) => {
+      const relation = row.demo_customers;
+      const customer = Array.isArray(relation) ? relation[0] : relation;
+      return {
+        id: row.id,
+        name: row.name,
+        phone: row.phone ?? null,
+        packageId: row.package_id,
+        completedAt: row.completed_at ?? null,
+        providerExpiresAt: row.provider_expires_at ?? null,
+        marketingConsent: customer?.marketing_consent === true,
+      };
+    });
+  }
+
+  async claimFollowups(ids: string[], now: Date): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const { data, error } = await this.client.rpc("claim_demo_followups", {
+      p_ids: ids,
+      p_now: now.toISOString(),
+    });
+    if (error) throw error;
+    return Array.isArray(data)
+      ? data.map((row: unknown) =>
+          typeof row === "string" ? row : (row as DatabaseRow).id,
+        )
+      : [];
+  }
+
+  async recordFollowup(id: string, status: "sent" | "failed"): Promise<void> {
+    const { error } = await this.client.rpc("record_demo_followup", {
+      p_id: id,
+      p_status: status,
+    });
+    if (error) throw error;
   }
 
   async redactAudit(): Promise<number> {

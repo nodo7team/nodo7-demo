@@ -13,6 +13,7 @@ describe("route protection", () => {
     "/api/demo/session",
     "/api/demo/generate",
     "/api/cron/demo-cleanup",
+    "/api/cron/demo-followup",
   ])("keeps %s public", (path) => {
     expect(isPublicPath(path)).toBe(true);
   });

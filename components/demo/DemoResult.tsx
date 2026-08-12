@@ -5,6 +5,27 @@ import { Check, Copy, MessageCircle, Tv, TriangleAlert } from "lucide-react";
 import { packageSummary } from "@/lib/demo/packages";
 import type { DemoResultView } from "@/lib/demo/types";
 
+/**
+ * The browser knows the visitor's own timezone, which the server never does.
+ * This used to print the raw ISO string, and the WhatsApp message quoted the
+ * hour in UTC — three hours off for anyone in Argentina.
+ */
+function localExpiry(expiresAt: string): string {
+  const when = new Date(expiresAt);
+  if (Number.isNaN(when.getTime())) return "en el horario indicado";
+  const sameDay = when.toDateString() === new Date().toDateString();
+  const time = when.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return sameDay
+    ? `hoy a las ${time}`
+    : `${when.toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "long",
+      })} a las ${time}`;
+}
+
 function DeliveryNotice({ result }: { result: DemoResultView }) {
   const { status, maskedPhone } = result.delivery;
 
@@ -97,7 +118,7 @@ export function DemoResult({ result }: { result: DemoResultView }) {
           {result.kind === "activecode"
             ? "El tiempo empieza cuando la actives"
             : result.expiresAt
-              ? `Vence ${result.expiresAt}`
+              ? `Vence ${localExpiry(result.expiresAt)}`
               : "Duración definida por el proveedor"}
         </span>
       </div>
