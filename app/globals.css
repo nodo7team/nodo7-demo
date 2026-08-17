@@ -788,6 +788,143 @@
 .ca-expired p { max-width: 40ch; margin: 0 auto 1.6rem; color: var(--ca-silver); font-size: 0.9rem; line-height: 1.6; }
 .ca-expired .ca-button { width: auto; margin-inline: auto; }
 
+/* ── Step 1: install the player, while no clock is running yet. ── */
+.ca-install { display: grid; gap: 1.5rem; }
+
+.ca-device-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  background: var(--ca-deep);
+  border: 1px solid var(--ca-hair);
+  border-radius: 12px;
+}
+.ca-device-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0.6rem 0.7rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ca-silver);
+  font: 700 0.85rem var(--font-sans), sans-serif;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.ca-device-tabs button svg { flex: 0 0 auto; }
+.ca-device-tabs button:hover { color: var(--ca-chrome); }
+.ca-device-tabs button[aria-selected="true"] {
+  color: #fff;
+  background: var(--ca-raised);
+  box-shadow: inset 0 0 0 1px var(--ca-hair-lit);
+}
+
+/* The number is drawn by the counter, so the markup stays an ordered list. */
+.ca-steps {
+  counter-reset: ca-step;
+  display: grid;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ca-steps > li { counter-increment: ca-step; position: relative; padding-left: 3rem; }
+.ca-steps > li::before {
+  content: counter(ca-step);
+  position: absolute;
+  left: 0;
+  top: -0.15rem;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: rgb(91 113 196 / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(139 161 240 / 0.35);
+  color: var(--ca-blue-lit);
+  font: 700 0.95rem var(--font-mono), monospace;
+}
+/* A thread between the circles, so the order reads at a glance. */
+.ca-steps > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 1.05rem;
+  top: 2.25rem;
+  bottom: -1.5rem;
+  width: 1px;
+  background: linear-gradient(180deg, var(--ca-hair), transparent);
+}
+.ca-steps h3 {
+  margin: 0 0 0.35rem;
+  font: 800 1rem var(--font-sans), sans-serif;
+  color: var(--ca-chrome);
+}
+.ca-steps p { margin: 0; color: var(--ca-silver); font-size: 0.88rem; line-height: 1.6; }
+.ca-steps p + p { margin-top: 0.65rem; }
+.ca-steps b { color: var(--ca-chrome); font-weight: 700; }
+
+.ca-apps { display: grid; gap: 0.7rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.ca-app {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  background: var(--ca-deep);
+  border: 1px solid var(--ca-hair);
+  border-radius: 12px;
+}
+.ca-app[data-recommended="true"] {
+  background: rgb(91 113 196 / 0.1);
+  border-color: rgb(139 161 240 / 0.45);
+}
+.ca-app-id { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-width: 0; }
+.ca-app-id strong { font: 800 1rem var(--font-sans), sans-serif; color: var(--ca-chrome); }
+.ca-app-badge {
+  padding: 0.22rem 0.5rem;
+  border-radius: 100px;
+  background: rgb(139 161 240 / 0.18);
+  color: var(--ca-blue-lit);
+  font: 700 0.62rem var(--font-mono), monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ca-app-size { color: var(--ca-dim); font: 600 0.78rem var(--font-mono), monospace; }
+.ca-app .ca-button { width: auto; min-height: 46px; padding: 0.7rem 1.1rem; font-size: 0.85rem; }
+
+.ca-code-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.5rem 0.45rem 0.95rem;
+  background: var(--ca-void);
+  border: 1px solid var(--ca-blue-deep);
+  border-radius: 10px;
+}
+.ca-code-chip > span {
+  color: #fff;
+  font: 700 1.45rem var(--font-mono), monospace;
+  letter-spacing: 0.14em;
+}
+.ca-code-chip button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: rgb(91 113 196 / 0.18);
+  color: var(--ca-blue-lit);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.ca-code-chip button:hover { background: rgb(91 113 196 / 0.3); }
+
 @media (max-width: 980px) {
   .ca-shell { grid-template-columns: 1fr; gap: 2.5rem; padding-bottom: 5rem; overflow: visible; }
   .ca-brand { margin-inline: auto; text-align: center; }
@@ -804,10 +941,17 @@
   .ca-plan-grid { grid-template-columns: 1fr; }
   .ca-phone-row { grid-template-columns: 1fr; }
   .ca-creds-single dd { font-size: 1.35rem; }
+
+  /* Side by side, "TV, Fire Stick o TV Box" wraps to three cramped lines. */
+  .ca-device-tabs { grid-template-columns: 1fr; }
+  .ca-steps > li { padding-left: 2.7rem; }
+  .ca-app { flex-direction: column; align-items: stretch; }
+  .ca-app .ca-button { width: 100%; }
+  .ca-code-chip { justify-content: space-between; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ca-button, .ca-plan, .ca-drain i { transition: none; }
+  .ca-button, .ca-plan, .ca-drain i, .ca-device-tabs button { transition: none; }
   .ca-onair[data-live="true"] i { animation: none; }
 }
 

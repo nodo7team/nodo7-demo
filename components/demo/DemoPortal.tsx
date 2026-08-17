@@ -10,6 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { AccessCodeForm } from "@/components/demo/AccessCodeForm";
+import { AppInstall } from "@/components/demo/AppInstall";
 import { DemoCountdown } from "@/components/demo/DemoCountdown";
 import { DemoResult } from "@/components/demo/DemoResult";
 import { DemoSetupForm } from "@/components/demo/DemoSetupForm";
@@ -21,10 +22,18 @@ type PortalState =
   | { kind: "result"; deadline: string; result: DemoResultView }
   | { kind: "expired" };
 
-const PANEL_COPY: Record<PortalState["kind"], { step: string; title: string }> = {
-  access: { step: "PASO 1 DE 3", title: "Ingresa tu pase" },
-  setup: { step: "PASO 2 DE 3", title: "Arma tu demo" },
-  result: { step: "PASO 3 DE 3", title: "Tu acceso está listo" },
+/**
+ * Installing the player is a screen, not a state: the server knows nothing
+ * about it, and folding it into PortalState would let a late session refetch
+ * drag a visitor who already moved on back to the beginning.
+ */
+type Screen = "install" | PortalState["kind"];
+
+const PANEL_COPY: Record<Screen, { step: string; title: string }> = {
+  install: { step: "PASO 1 DE 4", title: "Instala la app" },
+  access: { step: "PASO 2 DE 4", title: "Ingresa tu pase" },
+  setup: { step: "PASO 3 DE 4", title: "Arma tu demo" },
+  result: { step: "PASO 4 DE 4", title: "Tu acceso está listo" },
   expired: { step: "PASE CERRADO", title: "Sesión finalizada" },
 };
 
@@ -50,6 +59,7 @@ async function responseJson<T>(response: Response): Promise<T> {
 
 export function DemoPortal({ initialSession }: { initialSession: DemoSessionView }) {
   const [state, setState] = useState<PortalState>(() => portalState(initialSession));
+  const [installed, setInstalled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,7 +118,9 @@ export function DemoPortal({ initialSession }: { initialSession: DemoSessionView
   }
 
   const timed = state.kind === "setup" || state.kind === "result";
-  const panel = PANEL_COPY[state.kind];
+  const screen: Screen =
+    state.kind === "access" && !installed ? "install" : state.kind;
+  const panel = PANEL_COPY[screen];
 
   return (
     <main className="ca-shell">
@@ -171,7 +183,10 @@ export function DemoPortal({ initialSession }: { initialSession: DemoSessionView
               </div>
             </div>
 
-            {state.kind === "access" ? (
+            {screen === "install" ? (
+              <AppInstall onContinue={() => setInstalled(true)} />
+            ) : null}
+            {screen === "access" ? (
               <AccessCodeForm busy={busy} error={error} onSubmit={activate} />
             ) : null}
             {state.kind === "setup" ? (

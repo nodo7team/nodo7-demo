@@ -17,6 +17,45 @@ afterEach(() => {
 });
 
 describe("NODO7 demo portal", () => {
+  /**
+   * Installing an 80 MB player takes longer than the ten minutes the code
+   * allows, so the offer has to come before the clock, not after.
+   */
+  it("offers the app before asking for the code", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ state: "none" })),
+    );
+    render(<DemoPortal initialSession={{ state: "none" }} />);
+
+    expect(screen.getByRole("heading", { name: /instala la app/i })).toBeVisible();
+    expect(screen.getByText(/paso 1 de 4/i)).toBeVisible();
+    expect(screen.queryByLabelText(/código de acceso/i)).not.toBeInTheDocument();
+  });
+
+  /** Whoever already burned their code has nothing to gain from that screen. */
+  it("skips the app step once the clock is already running", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ state: "none" })),
+    );
+    render(
+      <DemoPortal
+        initialSession={{
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+          deliveryOnly: false,
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("heading", { name: /instala la app/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Nombre")).toBeVisible();
+  });
+
   it("moves from a one-use code to the timed setup form", async () => {
     const deadline = new Date(Date.now() + 600_000).toISOString();
     vi.stubGlobal(
@@ -33,6 +72,7 @@ describe("NODO7 demo portal", () => {
     render(<DemoPortal initialSession={{ state: "none" }} />);
 
     expect(screen.queryByText(/10:00/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /ya la tengo/i }));
     await user.type(
       screen.getByLabelText(/código de acceso/i),
       "N7-ABCD-EFGH-JKLM-NPQR-STUV",
