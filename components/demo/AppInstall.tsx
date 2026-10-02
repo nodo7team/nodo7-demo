@@ -1,14 +1,30 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
-import { ArrowRight, Check, Copy, Download, Smartphone, Tv } from "lucide-react";
-import { PLAYER_APPS, formatBytes, type PlayerApp } from "@/lib/apps/catalog";
+import {
+  ArrowRight,
+  Check,
+  Copy,
+  Download,
+  MessageCircle,
+  Smartphone,
+  Tv,
+} from "lucide-react";
+import {
+  PLAYER_APPS,
+  ROKU_APP,
+  formatBytes,
+  rokuWhatsappUrl,
+  type PlayerApp,
+} from "@/lib/apps/catalog";
 
-type Device = "phone" | "tv";
+type Device = "phone" | "tv" | "roku";
 
 const DEVICES: ReadonlyArray<{ id: Device; label: string; Icon: typeof Tv }> = [
   { id: "phone", label: "Celular o tablet", Icon: Smartphone },
   { id: "tv", label: "TV, Fire Stick o TV Box", Icon: Tv },
+  { id: "roku", label: "Roku", Icon: Tv },
 ];
 
 function AppRow({ app, children }: { app: PlayerApp; children: React.ReactNode }) {
@@ -174,6 +190,66 @@ function TvSteps() {
   );
 }
 
+/**
+ * Roku is the odd one out: no file, no Downloader. The app comes from the
+ * channel store and opens onto an access code that is not the demo pass, so
+ * the way to get one is to ask for it.
+ */
+function RokuSteps() {
+  return (
+    <div className="ca-roku">
+      <div className="ca-roku-hero">
+        <Image
+          src="/brand/clientarea-logo.png"
+          alt="ClientArea by Nodo 7 OTT"
+          width={1189}
+          height={379}
+        />
+        <h3>{ROKU_APP.storeName}</h3>
+        <p>Disponible en la tienda de canales de Roku</p>
+      </div>
+
+      <ol className="ca-steps ca-steps-roku">
+        <li>
+          <h3>Abre la tienda de tu Roku</h3>
+          <p>
+            Desde el inicio entra a <b>Canales de streaming</b> y elige{" "}
+            <b>Buscar canales</b>. Es la tienda oficial, el Roku Channel Store.
+          </p>
+        </li>
+
+        <li>
+          <h3>Busca {ROKU_APP.storeName}</h3>
+          <p>
+            Escribe <b>{ROKU_APP.storeName}</b>, entra a la app y elige{" "}
+            <b>Agregar canal</b>. Es gratis y se instala en segundos.
+          </p>
+        </li>
+
+        <li>
+          <h3>Pide tu acceso</h3>
+          <p>
+            Al abrirla te pide un <b>código aparte</b>, distinto del pase de esta
+            página. Se entrega a mano: escríbenos y lo recibes por WhatsApp.
+          </p>
+          <a
+            className="ca-button ca-button-roku"
+            href={rokuWhatsappUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <MessageCircle aria-hidden="true" size={18} />
+            <span>Pedir acceso por WhatsApp</span>
+          </a>
+          <p className="ca-hint ca-roku-number">
+            Número: <strong>{ROKU_APP.whatsappDisplay}</strong>
+          </p>
+        </li>
+      </ol>
+    </div>
+  );
+}
+
 export function AppInstall({ onContinue }: { onContinue(): void }) {
   const [device, setDevice] = useState<Device>("phone");
 
@@ -197,6 +273,7 @@ export function AppInstall({ onContinue }: { onContinue(): void }) {
             role="tab"
             id={`ca-device-${id}`}
             aria-selected={device === id}
+            data-roku={id === "roku" ? "true" : undefined}
             aria-controls="ca-device-panel"
             tabIndex={device === id ? 0 : -1}
             onClick={() => setDevice(id)}
@@ -216,7 +293,9 @@ export function AppInstall({ onContinue }: { onContinue(): void }) {
         role="tabpanel"
         aria-labelledby={`ca-device-${device}`}
       >
-        {device === "phone" ? <PhoneSteps /> : <TvSteps />}
+        {device === "phone" ? <PhoneSteps /> : null}
+        {device === "tv" ? <TvSteps /> : null}
+        {device === "roku" ? <RokuSteps /> : null}
       </div>
 
       <button

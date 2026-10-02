@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import {
+  ArrowRight,
   Check,
   LockKeyhole,
   MessageCircle,
@@ -14,7 +15,37 @@ import { AppInstall } from "@/components/demo/AppInstall";
 import { DemoCountdown } from "@/components/demo/DemoCountdown";
 import { DemoResult } from "@/components/demo/DemoResult";
 import { DemoSetupForm } from "@/components/demo/DemoSetupForm";
-import type { DemoPackageId, DemoResultView, DemoSessionView } from "@/lib/demo/types";
+import type {
+  DemoCredentialType,
+  DemoPackageId,
+  DemoResultView,
+  DemoSessionView,
+} from "@/lib/demo/types";
+
+/** What each page hands out, said in the words a visitor would use. */
+const KIND_COPY: Record<
+  DemoCredentialType,
+  { eyebrow: string; lede: React.ReactNode }
+> = {
+  line: {
+    eyebrow: "Pase de prueba · usuario y contraseña",
+    lede: (
+      <>
+        Tienes un código de un solo uso. Elige cuánto quieres probar y te
+        mandamos tu <b>usuario y contraseña por WhatsApp</b>, en segundos.
+      </>
+    ),
+  },
+  activecode: {
+    eyebrow: "Pase de prueba · código de activación",
+    lede: (
+      <>
+        Tienes un código de un solo uso. Elige cuánto quieres probar y te
+        mandamos tu <b>código de activación por WhatsApp</b>, en segundos.
+      </>
+    ),
+  },
+};
 
 type PortalState =
   | { kind: "access" }
@@ -57,11 +88,18 @@ async function responseJson<T>(response: Response): Promise<T> {
   return payload;
 }
 
-export function DemoPortal({ initialSession }: { initialSession: DemoSessionView }) {
+export function DemoPortal({
+  initialSession,
+  kind = "line",
+}: {
+  initialSession: DemoSessionView;
+  kind?: DemoCredentialType;
+}) {
   const [state, setState] = useState<PortalState>(() => portalState(initialSession));
   const [installed, setInstalled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wrongPage, setWrongPage] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -77,12 +115,24 @@ export function DemoPortal({ initialSession }: { initialSession: DemoSessionView
   async function activate(code: string) {
     setBusy(true);
     setError(null);
+    setWrongPage(null);
     try {
       const response = await fetch("/api/demo/access", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, page: kind }),
       });
+      if (response.status === 409) {
+        const payload = (await response.json()) as {
+          error?: string;
+          redirectTo?: string;
+        };
+        if (payload.redirectTo) {
+          setWrongPage(payload.redirectTo);
+          setError(payload.error ?? "Este pase es para otra página.");
+          return;
+        }
+      }
       setState(portalState(await responseJson<DemoSessionView>(response)));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Código no disponible.");
@@ -134,12 +184,9 @@ export function DemoPortal({ initialSession }: { initialSession: DemoSessionView
             priority
           />
         </div>
-        <p className="ca-eyebrow">Pase de prueba · un solo uso</p>
+        <p className="ca-eyebrow">{KIND_COPY[kind].eyebrow}</p>
         <h1>Enciende la señal.</h1>
-        <p className="ca-lede">
-          Tienes un código de un solo uso. Elige cuánto quieres probar y te
-          mandamos el acceso <b>por WhatsApp</b>, en segundos.
-        </p>
+        <p className="ca-lede">{KIND_COPY[kind].lede}</p>
         <ul className="ca-trust">
           <li><LockKeyhole aria-hidden="true" size={15} /> Un código, una demo</li>
           <li><MessageCircle aria-hidden="true" size={15} /> Llega a tu WhatsApp</li>
@@ -187,7 +234,15 @@ export function DemoPortal({ initialSession }: { initialSession: DemoSessionView
               <AppInstall onContinue={() => setInstalled(true)} />
             ) : null}
             {screen === "access" ? (
-              <AccessCodeForm busy={busy} error={error} onSubmit={activate} />
+              <>
+                <AccessCodeForm busy={busy} error={error} onSubmit={activate} />
+                {wrongPage ? (
+                  <a className="ca-button ca-button-quiet" href={wrongPage}>
+                    <ArrowRight aria-hidden="true" size={17} />
+                    <span>Ir a la página correcta</span>
+                  </a>
+                ) : null}
+              </>
             ) : null}
             {state.kind === "setup" ? (
               <DemoSetupForm

@@ -74,6 +74,17 @@ class InMemoryDemoRepository implements DemoRepository {
     return record;
   }
 
+  async findPendingCredentialType(
+    codeHash: string,
+  ): Promise<DemoCredentialType | null> {
+    return (
+      this.records.find(
+        (candidate) =>
+          candidate.codeHash === codeHash && candidate.status === "pending",
+      )?.credentialType ?? null
+    );
+  }
+
   async countFailedActivations(): Promise<number> {
     return this.failedAttempts;
   }
@@ -208,6 +219,74 @@ describe("demo access service", () => {
         now: NOW,
       }),
     ).rejects.toMatchObject({ publicCode: "CODE_UNAVAILABLE" });
+  });
+
+  describe("one page per credential type", () => {
+    it("turns away a pass meant for the other page and leaves it unspent", async () => {
+      const { code } = await service.createAdminCode("activecode");
+
+      await expect(
+        service.activateAccessCode({
+          code,
+          ip: "203.0.113.4",
+          now: NOW,
+          page: "line",
+        }),
+      ).rejects.toMatchObject({
+        publicCode: "WRONG_PAGE",
+        status: 409,
+        correctPage: "activecode",
+      });
+
+      const retry = await service.activateAccessCode({
+        code,
+        ip: "203.0.113.4",
+        now: NOW,
+        page: "activecode",
+      });
+      expect(retry.token).toBeTruthy();
+    });
+
+    it("lets a pass through on the page that matches its type", async () => {
+      const { code } = await service.createAdminCode("line");
+      const activated = await service.activateAccessCode({
+        code,
+        ip: "203.0.113.4",
+        now: NOW,
+        page: "line",
+      });
+      expect(activated.deadline).toBe("2026-07-22T12:10:00.000Z");
+    });
+
+    it("says nothing extra about a code that does not exist", async () => {
+      await expect(
+        service.activateAccessCode({
+          code: "N7-NOT-A-REAL-CODE",
+          ip: "203.0.113.4",
+          now: NOW,
+          page: "line",
+        }),
+      ).rejects.toMatchObject({ publicCode: "CODE_UNAVAILABLE" });
+    });
+
+    it("does not point at another page once the pass is already spent", async () => {
+      const { code } = await service.createAdminCode("activecode");
+      await service.activateAccessCode({
+        code,
+        ip: "203.0.113.4",
+        now: NOW,
+        page: "activecode",
+      });
+
+      await expect(
+        service.activateAccessCode({
+          code,
+          ip: "203.0.113.4",
+          now: NOW,
+          page: "line",
+        }),
+      ).rejects.toMatchObject({ publicCode: "CODE_UNAVAILABLE" });
+    });
   });
 
   it("blocks the eleventh failed activation from the same IP", async () => {

@@ -6,10 +6,12 @@ import {
   DemoAccessError,
   type DemoAccessService,
 } from "@/lib/demo/service";
+import { DEMO_PAGE_CREDENTIAL_TYPES, DEMO_PAGE_PATH } from "@/lib/demo/pages";
 import { demoSessionCookie } from "@/lib/demo/session";
 
 const AccessSchema = z.object({
   code: z.string().min(8).max(64),
+  page: z.enum(DEMO_PAGE_CREDENTIAL_TYPES).optional(),
 });
 
 type ActivationService = Pick<DemoAccessService, "activateAccessCode">;
@@ -51,6 +53,7 @@ export function createAccessHandler(service: ActivationService) {
         code: parsed.data.code,
         ip: getTrustedProxyIp(request),
         now: new Date(),
+        page: parsed.data.page,
       });
       const cookie = demoSessionCookie(activated.token);
       const response = NextResponse.json({
@@ -62,6 +65,15 @@ export function createAccessHandler(service: ActivationService) {
       return response;
     } catch (error) {
       if (error instanceof DemoAccessError) {
+        if (error.publicCode === "WRONG_PAGE" && error.correctPage) {
+          return NextResponse.json(
+            {
+              error: "Este pase es para otra página. Te llevamos a la correcta.",
+              redirectTo: DEMO_PAGE_PATH[error.correctPage],
+            },
+            { status: error.status },
+          );
+        }
         const message =
           error.publicCode === "RATE_LIMITED"
             ? "Demasiados intentos. Intenta nuevamente más tarde."

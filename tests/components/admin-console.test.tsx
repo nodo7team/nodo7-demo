@@ -91,6 +91,53 @@ describe("NODO7 admin console", () => {
     ).toBeVisible();
   });
 
+  it("hands over the link that matches the pass that was just issued", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { code: "N7-ABCD-EFGH-JKLM-NPQR-STUV", record: code("pending", "activecode") },
+          201,
+        ),
+      ),
+    );
+    render(<AdminConsole initialCodes={[]} />);
+
+    await user.click(screen.getByRole("radio", { name: /código de activación/i }));
+    await user.click(screen.getByRole("button", { name: /crear código/i }));
+
+    const link = `${window.location.origin}/demo/activecode`;
+    expect(await screen.findByText(link)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /copiar enlace/i }));
+    expect(writeText).toHaveBeenCalledWith(link);
+  });
+
+  it("points a username and password pass at the main page", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { code: "N7-ABCD-EFGH-JKLM-NPQR-STUV", record: code("pending", "line") },
+          201,
+        ),
+      ),
+    );
+    render(<AdminConsole initialCodes={[]} />);
+
+    await user.click(screen.getByRole("button", { name: /crear código/i }));
+
+    expect(
+      await screen.findByText(`${window.location.origin}/demo`),
+    ).toBeVisible();
+  });
+
   it("labels what each issued code will deliver", () => {
     render(
       <AdminConsole

@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, Copy, KeyRound, Plus, Ticket, UserRound } from "lucide-react";
+import { Check, Copy, KeyRound, Link2, Plus, Ticket, UserRound } from "lucide-react";
 import { useState } from "react";
+import { DEMO_PAGE_PATH } from "@/lib/demo/pages";
 import type { DemoCredentialType } from "@/lib/demo/types";
 
 export const CREDENTIAL_TYPE_LABELS: Record<DemoCredentialType, string> = {
@@ -40,12 +41,28 @@ export function CodeGenerator({
   onCreate,
 }: CodeGeneratorProps) {
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   async function copyCode() {
     if (!code) return;
     await navigator.clipboard.writeText(code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1_500);
+  }
+
+  // The seller sends the page that matches the pass; the wrong one turns the
+  // visitor away. Built from the address the admin is on, so it is right on
+  // any domain, previews included.
+  const link =
+    code && createdType
+      ? `${window.location.origin}${DEMO_PAGE_PATH[createdType]}`
+      : null;
+
+  async function copyLink() {
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    setLinkCopied(true);
+    window.setTimeout(() => setLinkCopied(false), 1_500);
   }
 
   return (
@@ -101,6 +118,16 @@ export function CodeGenerator({
           <button type="button" onClick={() => void copyCode()} aria-label="Copiar código">
             {copied ? <Check size={18} /> : <Copy size={18} />} {copied ? "Copiado" : "Copiar código"}
           </button>
+          {link ? (
+            <div className="ca-admin-link">
+              <small>ENLACE PARA ENVIAR CON ESTE CÓDIGO</small>
+              <code>{link}</code>
+              <button type="button" onClick={() => void copyLink()}>
+                {linkCopied ? <Check size={18} /> : <Link2 size={18} />}{" "}
+                {linkCopied ? "Copiado" : "Copiar enlace"}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

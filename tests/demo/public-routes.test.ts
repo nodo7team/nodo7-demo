@@ -63,6 +63,58 @@ describe("public demo routes", () => {
     });
   });
 
+  it("passes the page the visitor is on to the service", async () => {
+    const activateAccessCode = vi.fn().mockResolvedValue({
+      token: "t",
+      deadline: "2026-07-22T12:10:00.000Z",
+    });
+    const handler = createAccessHandler({ activateAccessCode });
+    await handler(
+      new NextRequest("https://nodo7.example/api/demo/access", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: "N7-VALID-CODE", page: "activecode" }),
+      }),
+    );
+    expect(activateAccessCode).toHaveBeenCalledWith(
+      expect.objectContaining({ page: "activecode" }),
+    );
+  });
+
+  it("sends a visitor holding the other kind of pass to the right page", async () => {
+    const handler = createAccessHandler({
+      activateAccessCode: vi
+        .fn()
+        .mockRejectedValue(new DemoAccessError("WRONG_PAGE", 409, "activecode")),
+    });
+    const response = await handler(
+      new NextRequest("https://nodo7.example/api/demo/access", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: "N7-VALID-CODE", page: "line" }),
+      }),
+    );
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Este pase es para otra página. Te llevamos a la correcta.",
+      redirectTo: "/demo/activecode",
+    });
+  });
+
+  it("rejects an unknown page before calling the service", async () => {
+    const activateAccessCode = vi.fn();
+    const handler = createAccessHandler({ activateAccessCode });
+    const response = await handler(
+      new NextRequest("https://nodo7.example/api/demo/access", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: "N7-VALID-CODE", page: "mag" }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(activateAccessCode).not.toHaveBeenCalled();
+  });
+
   it("rejects malformed payloads before calling the service", async () => {
     const activateAccessCode = vi.fn();
     const handler = createAccessHandler({ activateAccessCode });

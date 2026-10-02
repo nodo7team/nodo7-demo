@@ -793,7 +793,7 @@
 
 .ca-device-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.4rem;
   padding: 0.35rem;
   background: var(--ca-deep);
@@ -924,6 +924,63 @@
   transition: background 160ms ease;
 }
 .ca-code-chip button:hover { background: rgb(91 113 196 / 0.3); }
+
+/* ── Roku: the store's purple, so the tab reads as the Roku channel it is. ── */
+.ca-roku {
+  --ca-roku:       #662d91;
+  --ca-roku-lit:   #a56bd6;
+  --ca-roku-deep:  #2a1043;
+  display: grid;
+  gap: 1.5rem;
+}
+.ca-roku-hero {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 1.6rem 1.25rem 1.4rem;
+  text-align: center;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(165 107 214 / 0.55), transparent 62%),
+    linear-gradient(160deg, var(--ca-roku) 0%, var(--ca-roku-deep) 100%);
+  border: 1px solid rgb(165 107 214 / 0.55);
+  border-radius: 16px;
+  box-shadow: 0 14px 40px -18px rgb(102 45 145 / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+.ca-roku-hero img {
+  width: min(300px, 82%);
+  height: auto;
+  padding: 0.7rem 1rem;
+  background: rgb(7 9 16 / 0.62);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 26px -12px rgb(0 0 0 / 0.7);
+}
+.ca-roku-hero h3 {
+  margin: 0.5rem 0 0;
+  color: #fff;
+  font: 800 1.55rem var(--font-sans), sans-serif;
+  letter-spacing: 0.22em;
+}
+.ca-roku-hero p { margin: 0; color: rgb(255 255 255 / 0.78); font-size: 0.82rem; }
+.ca-steps-roku > li::before {
+  background: rgb(102 45 145 / 0.5);
+  box-shadow: inset 0 0 0 1px rgb(165 107 214 / 0.7);
+  color: #ecd9ff;
+}
+.ca-button-roku {
+  width: auto;
+  margin-top: 0.9rem;
+  background: linear-gradient(180deg, #7b3aa8, var(--ca-roku));
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 8px 22px -10px rgb(102 45 145 / 0.9);
+}
+.ca-button-roku:hover:not(:disabled) { background: linear-gradient(180deg, #8d49bb, #7432a3); }
+.ca-roku-number { margin-top: 0.6rem; }
+.ca-roku-number strong { color: var(--ca-chrome); font-family: var(--font-mono), monospace; letter-spacing: 0.04em; }
+.ca-device-tabs button[aria-selected="true"][data-roku="true"] {
+  background: var(--ca-roku-deep, #2a1043);
+  box-shadow: inset 0 0 0 1px #a56bd6;
+}
 
 @media (max-width: 980px) {
   .ca-shell { grid-template-columns: 1fr; gap: 2.5rem; padding-bottom: 5rem; overflow: visible; }
@@ -1167,6 +1224,7 @@
 .ca-admin-new-code {
   grid-column: 1 / -1;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -1176,6 +1234,16 @@
   border-radius: 12px;
 }
 .ca-admin-new-code > div { display: grid; gap: 0.3rem; min-width: 0; }
+.ca-admin-new-code .ca-admin-link {
+  flex: 1 1 100%;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.3rem 0.8rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgb(70 201 138 / 0.25);
+}
+.ca-admin-link small { grid-column: 1 / -1; }
+.ca-admin-link code { overflow-wrap: anywhere; color: var(--ca-chrome); font: 600 0.82rem var(--font-mono), monospace; }
 .ca-admin-new-code small {
   color: #8fd9b6;
   font: 700 0.6rem var(--font-mono), monospace;

@@ -4,6 +4,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/edge";
 const PUBLIC_EXACT = new Set([
   "/",
   "/demo",
+  "/demo/activecode",
   "/login",
   "/api/auth/login",
   "/api/auth/logout",

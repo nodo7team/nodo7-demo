@@ -477,4 +477,95 @@ describe("NODO7 demo portal", () => {
     ).toBeVisible();
     expect(screen.getByText("00:00")).toBeVisible();
   });
+
+  describe("one page per kind of access", () => {
+    function stubFetch(accessResponse: Response) {
+      const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) =>
+        String(input).endsWith("/api/demo/session")
+          ? jsonResponse({ state: "none" })
+          : accessResponse.clone(),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    async function submitCode(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole("button", { name: /ya la tengo instalada/i }));
+      await user.type(screen.getByLabelText(/código de acceso/i), "N7-AAAA-BBBB");
+      await user.click(screen.getByRole("button", { name: /continuar/i }));
+    }
+
+    it("tells the server which page the pass was entered on", async () => {
+      const user = userEvent.setup();
+      const fetchMock = stubFetch(
+        jsonResponse({
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+        }),
+      );
+      render(<DemoPortal initialSession={{ state: "none" }} kind="activecode" />);
+
+      await submitCode(user);
+
+      const call = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith("/api/demo/access"),
+      )!;
+      expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+        code: "N7-AAAA-BBBB",
+        page: "activecode",
+      });
+    });
+
+    it("defaults to the username and password page", async () => {
+      const user = userEvent.setup();
+      const fetchMock = stubFetch(
+        jsonResponse({
+          state: "setup",
+          deadline: new Date(Date.now() + 600_000).toISOString(),
+          remainingSeconds: 600,
+        }),
+      );
+      render(<DemoPortal initialSession={{ state: "none" }} />);
+
+      await submitCode(user);
+
+      const call = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith("/api/demo/access"),
+      )!;
+      expect(JSON.parse(String((call[1] as RequestInit).body)).page).toBe("line");
+    });
+
+    it("says on the page itself which kind of access it hands out", () => {
+      stubFetch(jsonResponse({ state: "none" }));
+      const { unmount } = render(
+        <DemoPortal initialSession={{ state: "none" }} kind="activecode" />,
+      );
+      expect(screen.getByText(/pase de prueba · código de activación/i)).toBeVisible();
+      unmount();
+
+      render(<DemoPortal initialSession={{ state: "none" }} kind="line" />);
+      expect(screen.getByText(/pase de prueba · usuario y contraseña/i)).toBeVisible();
+    });
+
+    it("links a visitor holding the other kind of pass to the right page", async () => {
+      const user = userEvent.setup();
+      stubFetch(
+        jsonResponse(
+          {
+            error: "Este pase es para otra página. Te llevamos a la correcta.",
+            redirectTo: "/demo/activecode",
+          },
+          409,
+        ),
+      );
+      render(<DemoPortal initialSession={{ state: "none" }} kind="line" />);
+
+      await submitCode(user);
+
+      expect(
+        await screen.findByRole("link", { name: /ir a la página correcta/i }),
+      ).toHaveAttribute("href", "/demo/activecode");
+    });
+  });
 });

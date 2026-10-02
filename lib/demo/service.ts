@@ -25,12 +25,17 @@ import { maskPhone } from "@/lib/whatsapp/phone";
 const ACTIVATION_WINDOW_MS = 15 * 60 * 1_000;
 const MAX_FAILED_ACTIVATIONS = 10;
 
-export type DemoAccessPublicCode = "CODE_UNAVAILABLE" | "RATE_LIMITED";
+export type DemoAccessPublicCode =
+  | "CODE_UNAVAILABLE"
+  | "RATE_LIMITED"
+  | "WRONG_PAGE";
 
 export class DemoAccessError extends Error {
   constructor(
     public readonly publicCode: DemoAccessPublicCode,
     public readonly status: number,
+    /** Only for WRONG_PAGE: the page the pass actually belongs to. */
+    public readonly correctPage?: DemoCredentialType,
   ) {
     super(publicCode);
     this.name = "DemoAccessError";
@@ -46,6 +51,8 @@ export interface DemoAccessService {
     code: string;
     ip: string;
     now: Date;
+    /** The page the visitor is on. Omitted, any pass is accepted. */
+    page?: DemoCredentialType;
   }): Promise<{ token: string; deadline: string }>;
   getSessionView(token: string | null, now: Date): Promise<DemoSessionView>;
   listAdminCodes(filters: AdminCodeFilters): Promise<AccessCodeWithRequest[]>;
@@ -143,7 +150,7 @@ export function createDemoService(
       return { code, record };
     },
 
-    async activateAccessCode({ code, ip, now }) {
+    async activateAccessCode({ code, ip, now, page }) {
       const since = new Date(now.getTime() - ACTIVATION_WINDOW_MS).toISOString();
       const failures = await repository.countFailedActivations(ip, since);
       if (failures >= MAX_FAILED_ACTIVATIONS) {
@@ -153,6 +160,18 @@ export function createDemoService(
       const normalizedCode = normalizeAccessCode(code);
       const codeHash = hashSecret(normalizedCode);
       const codeFingerprint = codeHash.slice(0, 16);
+
+      // Checked before activating, because activating spends the pass. Only a
+      // pass that is still usable gets pointed elsewhere; anything else falls
+      // through to the same generic rejection as before, so this answers
+      // nothing about codes that do not exist or were already used.
+      if (page) {
+        const type = await repository.findPendingCredentialType(codeHash);
+        if (type && type !== page) {
+          throw new DemoAccessError("WRONG_PAGE", 409, type);
+        }
+      }
+
       const session = createDemoSessionToken();
       const record = await repository.activateCode({
         codeHash,

@@ -6,6 +6,7 @@ describe("route protection", () => {
   it.each([
     "/",
     "/demo",
+    "/demo/activecode",
     "/login",
     "/api/auth/login",
     "/api/auth/logout",

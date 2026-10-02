@@ -105,6 +105,14 @@ export interface DemoRepository {
     sessionHash: string;
     ip: string;
   }): Promise<AccessCodeRecord | null>;
+  /**
+   * Read-only: what kind of access an unspent code carries, or null when no
+   * such code can still be activated. Activation consumes the code, so the
+   * page it belongs to has to be checked before that happens.
+   */
+  findPendingCredentialType(
+    codeHash: string,
+  ): Promise<DemoCredentialType | null>;
   countFailedActivations(ip: string, since: string): Promise<number>;
   recordActivationAttempt(input: ActivationAttempt): Promise<void>;
   findBySessionHash(
@@ -251,6 +259,19 @@ export class SupabaseDemoRepository implements DemoRepository {
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
     return row ? mapAccessCode(row) : null;
+  }
+
+  async findPendingCredentialType(
+    codeHash: string,
+  ): Promise<DemoCredentialType | null> {
+    const { data, error } = await this.client
+      .from("demo_access_codes")
+      .select("credential_type")
+      .eq("code_hash", codeHash)
+      .eq("status", "pending")
+      .maybeSingle();
+    if (error) throw error;
+    return data?.credential_type ?? null;
   }
 
   async countFailedActivations(ip: string, since: string): Promise<number> {

@@ -99,4 +99,58 @@ describe("app install step", () => {
 
     expect(onContinue).toHaveBeenCalledOnce();
   });
+
+  describe("Roku", () => {
+    it("has its own tab, with the name the Roku store shows", async () => {
+      const user = userEvent.setup();
+      render(<AppInstall onContinue={() => {}} />);
+
+      await user.click(screen.getByRole("tab", { name: /roku/i }));
+
+      expect(screen.getByRole("heading", { name: "CLIENTAREA" })).toBeVisible();
+      expect(screen.getByAltText(/clientarea/i)).toBeVisible();
+    });
+
+    it("does not offer an APK or a Downloader code, because Roku installs from its store", async () => {
+      const user = userEvent.setup();
+      render(<AppInstall onContinue={() => {}} />);
+
+      await user.click(screen.getByRole("tab", { name: /roku/i }));
+
+      expect(screen.queryByRole("link", { name: /descargar/i })).not.toBeInTheDocument();
+      expect(screen.queryByText("4616237")).not.toBeInTheDocument();
+      expect(screen.getByText(/roku channel store/i)).toBeVisible();
+    });
+
+    it("says the Roku access is a separate code that is requested by hand", async () => {
+      const user = userEvent.setup();
+      render(<AppInstall onContinue={() => {}} />);
+
+      await user.click(screen.getByRole("tab", { name: /roku/i }));
+
+      expect(screen.getByText(/código aparte/i)).toBeVisible();
+    });
+
+    it("opens WhatsApp on the support number with the request already written", async () => {
+      const user = userEvent.setup();
+      render(<AppInstall onContinue={() => {}} />);
+
+      await user.click(screen.getByRole("tab", { name: /roku/i }));
+
+      const link = screen.getByRole("link", { name: /pedir acceso por whatsapp/i });
+      const url = new URL(link.getAttribute("href")!);
+      expect(url.origin + url.pathname).toBe("https://wa.me/12815417014");
+      expect(url.searchParams.get("text")).toMatch(/clientarea/i);
+      expect(url.searchParams.get("text")).toMatch(/roku/i);
+    });
+
+    it("shows the number so it can be read or typed without the link", async () => {
+      const user = userEvent.setup();
+      render(<AppInstall onContinue={() => {}} />);
+
+      await user.click(screen.getByRole("tab", { name: /roku/i }));
+
+      expect(screen.getByText("+1 281 541 7014")).toBeVisible();
+    });
+  });
 });
