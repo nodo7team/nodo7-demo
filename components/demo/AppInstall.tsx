@@ -227,10 +227,10 @@ function RokuSteps() {
         </li>
 
         <li>
-          <h3>Pide tu acceso</h3>
+          <h3>Envíanos el código que te aparece</h3>
           <p>
-            Al abrirla te pide un <b>código aparte</b>, distinto del pase de esta
-            página. Se entrega a mano: escríbenos y lo recibes por WhatsApp.
+            Al abrir la app, la pantalla te muestra un código. Envíanoslo por
+            WhatsApp y activamos tu acceso.
           </p>
           <a
             className="ca-button ca-button-roku"
@@ -239,7 +239,7 @@ function RokuSteps() {
             rel="noopener noreferrer"
           >
             <MessageCircle aria-hidden="true" size={18} />
-            <span>Pedir acceso por WhatsApp</span>
+            <span>Enviar mi código por WhatsApp</span>
           </a>
           <p className="ca-hint ca-roku-number">
             Número: <strong>{ROKU_APP.whatsappDisplay}</strong>

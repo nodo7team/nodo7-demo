@@ -63,8 +63,9 @@ export function formatBytes(bytes: number): string {
 
 /**
  * Roku does not take an APK or a Downloader code: the app is installed from the
- * Roku Channel Store, and it asks for an access code of its own, separate from
- * the demo pass. That code is requested by hand over WhatsApp.
+ * Roku Channel Store. On first open it shows a code on screen, and the visitor
+ * sends that code to us over WhatsApp so we can activate it. The demo pass of
+ * this portal is not involved.
  */
 export const ROKU_APP = {
   /** The name the channel carries in the Roku store, exactly as searched. */
@@ -73,7 +74,7 @@ export const ROKU_APP = {
   whatsappPhone: "12815417014",
   whatsappDisplay: "+1 281 541 7014",
   whatsappMessage:
-    "Hola, quiero pedir acceso para la app CLIENTAREA en mi Roku.",
+    "Hola, instalé CLIENTAREA en mi Roku y quiero activarla. El código que me aparece en pantalla es: ",
 } as const;
 
 export function rokuWhatsappUrl(): string {

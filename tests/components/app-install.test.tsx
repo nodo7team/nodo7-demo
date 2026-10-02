@@ -122,13 +122,14 @@ describe("app install step", () => {
       expect(screen.getByText(/roku channel store/i)).toBeVisible();
     });
 
-    it("says the Roku access is a separate code that is requested by hand", async () => {
+    it("explains that the app shows a code on screen and that we need it sent to us", async () => {
       const user = userEvent.setup();
       render(<AppInstall onContinue={() => {}} />);
 
       await user.click(screen.getByRole("tab", { name: /roku/i }));
 
-      expect(screen.getByText(/código aparte/i)).toBeVisible();
+      expect(screen.getByText(/te muestra un código/i)).toBeVisible();
+      expect(screen.getByText(/envíanoslo/i)).toBeVisible();
     });
 
     it("opens WhatsApp on the support number with the request already written", async () => {
@@ -137,7 +138,7 @@ describe("app install step", () => {
 
       await user.click(screen.getByRole("tab", { name: /roku/i }));
 
-      const link = screen.getByRole("link", { name: /pedir acceso por whatsapp/i });
+      const link = screen.getByRole("link", { name: /enviar mi código por whatsapp/i });
       const url = new URL(link.getAttribute("href")!);
       expect(url.origin + url.pathname).toBe("https://wa.me/12815417014");
       expect(url.searchParams.get("text")).toMatch(/clientarea/i);
