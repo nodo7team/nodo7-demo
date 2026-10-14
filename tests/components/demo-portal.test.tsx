@@ -495,6 +495,28 @@ describe("NODO7 demo portal", () => {
       await user.click(screen.getByRole("button", { name: /continuar/i }));
     }
 
+    it("installs only the exclusive app on the active-code page, and the players on the other", () => {
+      const { unmount } = render(
+        <DemoPortal initialSession={{ state: "none" }} kind="activecode" />,
+      );
+      expect(
+        screen.getByRole("link", { name: /descargar clientarea/i }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("link", { name: /descargar ibo 26/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: /roku/i })).not.toBeInTheDocument();
+      unmount();
+
+      render(<DemoPortal initialSession={{ state: "none" }} kind="line" />);
+      expect(
+        screen.getByRole("link", { name: /descargar ibo 26/i }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("link", { name: /descargar clientarea/i }),
+      ).not.toBeInTheDocument();
+    });
+
     it("tells the server which page the pass was entered on", async () => {
       const user = userEvent.setup();
       const fetchMock = stubFetch(

@@ -250,7 +250,7 @@ export function DemoPortal({
             </div>
 
             {screen === "install" ? (
-              <AppInstall onContinue={() => setInstalled(true)} />
+              <AppInstall kind={kind} onContinue={() => setInstalled(true)} />
             ) : null}
             {screen === "access" ? (
               <>

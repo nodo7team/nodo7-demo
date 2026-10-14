@@ -42,6 +42,20 @@ export const PLAYER_APPS: readonly PlayerApp[] = [
   },
 ] as const;
 
+/**
+ * The one app that takes an activation code. The generic players above only
+ * log in with a username and password, so the active-code page offers this
+ * and nothing else: showing IBO or V3PLAY there sends the visitor to an app
+ * that cannot use what they are about to receive.
+ */
+export const CLIENTAREA_APP = {
+  name: "ClientArea",
+  apkUrl: "https://contentmasters.app/apps/Client_Area.apk",
+  /** What Downloader takes in place of a code: this one has no short code. */
+  downloaderAddress: "contentmasters.app/apps/Client_Area.apk",
+  bytes: 51_402_989,
+} as const;
+
 export function recommendedApp(): PlayerApp {
   return PLAYER_APPS.find((app) => app.recommended) ?? PLAYER_APPS[0];
 }

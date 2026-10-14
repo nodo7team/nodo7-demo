@@ -11,7 +11,9 @@ import {
   Smartphone,
   Tv,
 } from "lucide-react";
+import type { DemoCredentialType } from "@/lib/demo/types";
 import {
+  CLIENTAREA_APP,
   PLAYER_APPS,
   ROKU_APP,
   formatBytes,
@@ -26,6 +28,29 @@ const DEVICES: ReadonlyArray<{ id: Device; label: string; Icon: typeof Tv }> = [
   { id: "tv", label: "TV, Fire Stick o TV Box", Icon: Tv },
   { id: "roku", label: "Roku", Icon: Tv },
 ];
+
+/**
+ * The active-code page offers this card and nothing else, in amber so it does
+ * not read as one more player among several.
+ */
+function ExclusiveApp({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="ca-exclusive" data-exclusive="true">
+      <span className="ca-exclusive-badge">App exclusiva de active code</span>
+      <div className="ca-exclusive-body">
+        <div className="ca-app-id">
+          <strong>{CLIENTAREA_APP.name}</strong>
+          <span className="ca-app-size">{formatBytes(CLIENTAREA_APP.bytes)}</span>
+        </div>
+        {children}
+      </div>
+      <p className="ca-exclusive-note">
+        Con active code <b>solo funciona esta app</b>. No uses IBO, V3PLAY ni
+        ninguna otra: no van a aceptar tu código.
+      </p>
+    </div>
+  );
+}
 
 function AppRow({ app, children }: { app: PlayerApp; children: React.ReactNode }) {
   return (
@@ -47,29 +72,44 @@ function AppRow({ app, children }: { app: PlayerApp; children: React.ReactNode }
  * to every button. The recommended player leads because it is a third of the
  * weight, not because it is better.
  */
-function PhoneSteps() {
+function PhoneSteps({ kind }: { kind: DemoCredentialType }) {
   return (
     <ol className="ca-steps">
       <li>
         <h3>Descargá la app</h3>
-        <p>
-          Las dos sirven igual. Si no sabés cuál elegir, llevá la recomendada:
-          pesa mucho menos y baja más rápido.
-        </p>
-        <ul className="ca-apps">
-          {PLAYER_APPS.map((app) => (
-            <AppRow key={app.id} app={app}>
-              <a
-                className={`ca-button ${app.recommended ? "ca-button-primary" : "ca-button-quiet"}`}
-                href={app.apkUrl}
-                rel="noopener"
-              >
-                <Download aria-hidden="true" size={18} />
-                <span>Descargar {app.name}</span>
-              </a>
-            </AppRow>
-          ))}
-        </ul>
+        {kind === "activecode" ? (
+          <ExclusiveApp>
+            <a
+              className="ca-button ca-button-exclusive"
+              href={CLIENTAREA_APP.apkUrl}
+              rel="noopener"
+            >
+              <Download aria-hidden="true" size={18} />
+              <span>Descargar {CLIENTAREA_APP.name}</span>
+            </a>
+          </ExclusiveApp>
+        ) : (
+          <>
+            <p>
+              Las dos sirven igual. Si no sabés cuál elegir, llevá la
+              recomendada: pesa mucho menos y baja más rápido.
+            </p>
+            <ul className="ca-apps">
+              {PLAYER_APPS.map((app) => (
+                <AppRow key={app.id} app={app}>
+                  <a
+                    className={`ca-button ${app.recommended ? "ca-button-primary" : "ca-button-quiet"}`}
+                    href={app.apkUrl}
+                    rel="noopener"
+                  >
+                    <Download aria-hidden="true" size={18} />
+                    <span>Descargar {app.name}</span>
+                  </a>
+                </AppRow>
+              ))}
+            </ul>
+          </>
+        )}
       </li>
 
       <li>
@@ -116,13 +156,13 @@ function PhoneSteps() {
  * seven digits typeable with a remote, which is the only reason this path
  * exists.
  */
-function TvSteps() {
+function TvSteps({ kind }: { kind: DemoCredentialType }) {
   const [copied, setCopied] = useState<string | null>(null);
 
-  async function copy(app: PlayerApp) {
+  async function copy(id: string, text: string) {
     try {
-      await navigator.clipboard.writeText(app.downloaderCode);
-      setCopied(app.id);
+      await navigator.clipboard.writeText(text);
+      setCopied(id);
       window.setTimeout(() => setCopied(null), 1_500);
     } catch {
       setCopied(null);
@@ -155,27 +195,61 @@ function TvSteps() {
       </li>
 
       <li>
-        <h3>Escribí el código en Downloader</h3>
-        <p>
-          Abrilo, escribí el código en el casillero de arriba y presioná{" "}
-          <b>Ir</b>. No hace falta ninguna dirección web.
-        </p>
-        <ul className="ca-apps">
-          {PLAYER_APPS.map((app) => (
-            <AppRow key={app.id} app={app}>
-              <div className="ca-code-chip">
-                <span>{app.downloaderCode}</span>
+        {kind === "activecode" ? (
+          <>
+            <h3>Escribí la dirección en Downloader</h3>
+            <p>
+              Abrilo, escribí esta dirección en el casillero de arriba y
+              presioná <b>Ir</b>.
+            </p>
+            <ExclusiveApp>
+              <div className="ca-code-chip ca-code-chip-exclusive">
+                <span>{CLIENTAREA_APP.downloaderAddress}</span>
                 <button
                   type="button"
-                  aria-label={`Copiar el código de ${app.name}`}
-                  onClick={() => void copy(app)}
+                  aria-label={`Copiar la dirección de ${CLIENTAREA_APP.name}`}
+                  onClick={() =>
+                    void copy("clientarea", CLIENTAREA_APP.downloaderAddress)
+                  }
                 >
-                  {copied === app.id ? <Check size={18} /> : <Copy size={18} />}
+                  {copied === "clientarea" ? (
+                    <Check size={18} />
+                  ) : (
+                    <Copy size={18} />
+                  )}
                 </button>
               </div>
-            </AppRow>
-          ))}
-        </ul>
+            </ExclusiveApp>
+          </>
+        ) : (
+          <>
+            <h3>Escribí el código en Downloader</h3>
+            <p>
+              Abrilo, escribí el código en el casillero de arriba y presioná{" "}
+              <b>Ir</b>. No hace falta ninguna dirección web.
+            </p>
+            <ul className="ca-apps">
+              {PLAYER_APPS.map((app) => (
+                <AppRow key={app.id} app={app}>
+                  <div className="ca-code-chip">
+                    <span>{app.downloaderCode}</span>
+                    <button
+                      type="button"
+                      aria-label={`Copiar el código de ${app.name}`}
+                      onClick={() => void copy(app.id, app.downloaderCode)}
+                    >
+                      {copied === app.id ? (
+                        <Check size={18} />
+                      ) : (
+                        <Copy size={18} />
+                      )}
+                    </button>
+                  </div>
+                </AppRow>
+              ))}
+            </ul>
+          </>
+        )}
       </li>
 
       <li>
@@ -250,12 +324,24 @@ function RokuSteps() {
   );
 }
 
-export function AppInstall({ onContinue }: { onContinue(): void }) {
+export function AppInstall({
+  onContinue,
+  kind = "line",
+}: {
+  onContinue(): void;
+  kind?: DemoCredentialType;
+}) {
   const [device, setDevice] = useState<Device>("phone");
+  // Roku has no active code of its own here: it is set up through the store
+  // and WhatsApp, which belongs to the username-and-password page.
+  const devices =
+    kind === "activecode"
+      ? DEVICES.filter((item) => item.id !== "roku")
+      : DEVICES;
 
   function move(direction: 1 | -1) {
-    const index = DEVICES.findIndex((item) => item.id === device);
-    setDevice(DEVICES[(index + direction + DEVICES.length) % DEVICES.length].id);
+    const index = devices.findIndex((item) => item.id === device);
+    setDevice(devices[(index + direction + devices.length) % devices.length].id);
   }
 
   return (
@@ -265,8 +351,8 @@ export function AppInstall({ onContinue }: { onContinue(): void }) {
         arrancan 10 minutos, y la demo empieza apenas recibís el acceso.
       </p>
 
-      <div className="ca-device-tabs" role="tablist" aria-label="Tipo de dispositivo">
-        {DEVICES.map(({ id, label, Icon }) => (
+      <div className="ca-device-tabs" data-count={devices.length} role="tablist" aria-label="Tipo de dispositivo">
+        {devices.map(({ id, label, Icon }) => (
           <button
             key={id}
             type="button"
@@ -293,8 +379,8 @@ export function AppInstall({ onContinue }: { onContinue(): void }) {
         role="tabpanel"
         aria-labelledby={`ca-device-${device}`}
       >
-        {device === "phone" ? <PhoneSteps /> : null}
-        {device === "tv" ? <TvSteps /> : null}
+        {device === "phone" ? <PhoneSteps kind={kind} /> : null}
+        {device === "tv" ? <TvSteps kind={kind} /> : null}
         {device === "roku" ? <RokuSteps /> : null}
       </div>
 

@@ -155,3 +155,58 @@ describe("app install step", () => {
     });
   });
 });
+
+describe("app install step on the active-code page", () => {
+  it("offers only the exclusive app, with its own download", () => {
+    render(<AppInstall kind="activecode" onContinue={() => {}} />);
+
+    expect(
+      screen.getByRole("link", { name: /descargar clientarea/i }),
+    ).toHaveAttribute("href", "https://contentmasters.app/apps/Client_Area.apk");
+    expect(screen.getByText(/app exclusiva de active code/i)).toBeVisible();
+    expect(screen.getByText(/solo funciona esta app/i)).toBeVisible();
+  });
+
+  it("does not show IBO or V3PLAY anywhere", async () => {
+    const user = userEvent.setup();
+    render(<AppInstall kind="activecode" onContinue={() => {}} />);
+
+    expect(
+      screen.queryByRole("link", { name: /descargar (ibo|v3play)/i }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /tv/i }));
+    expect(screen.queryByText("4616237")).not.toBeInTheDocument();
+    expect(screen.queryByText("3162777")).not.toBeInTheDocument();
+  });
+
+  it("gives Downloader the address instead of a code on a television", async () => {
+    const user = userEvent.setup();
+    render(<AppInstall kind="activecode" onContinue={() => {}} />);
+
+    await user.click(screen.getByRole("tab", { name: /tv/i }));
+
+    expect(
+      screen.getByText("contentmasters.app/apps/Client_Area.apk"),
+    ).toBeVisible();
+  });
+
+  it("has no Roku tab, because Roku is not set up with an active code", () => {
+    render(<AppInstall kind="activecode" onContinue={() => {}} />);
+
+    expect(screen.queryByRole("tab", { name: /roku/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+  });
+
+  it("leaves the username-and-password page as it was", () => {
+    render(<AppInstall kind="line" onContinue={() => {}} />);
+
+    expect(
+      screen.getByRole("link", { name: /descargar ibo 26/i }),
+    ).toBeVisible();
+    expect(screen.getByRole("tab", { name: /roku/i })).toBeVisible();
+    expect(
+      screen.queryByText(/app exclusiva de active code/i),
+    ).not.toBeInTheDocument();
+  });
+});

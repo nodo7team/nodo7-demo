@@ -981,6 +981,58 @@
   background: var(--ca-roku-deep, #2a1043);
   box-shadow: inset 0 0 0 1px #a56bd6;
 }
+.ca-device-tabs[data-count="2"] { grid-template-columns: repeat(2, 1fr); }
+
+/* ── Active code: amber, so the only app that takes the code stands apart. ── */
+.ca-exclusive {
+  --ca-amber:      #f5a524;
+  --ca-amber-lit:  #ffc766;
+  --ca-amber-deep: #3a2606;
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: linear-gradient(160deg, rgb(245 165 36 / 0.16), var(--ca-amber-deep));
+  border: 1px solid rgb(245 165 36 / 0.7);
+  border-radius: 14px;
+  box-shadow: 0 0 0 3px rgb(245 165 36 / 0.1);
+}
+.ca-exclusive-badge {
+  justify-self: start;
+  padding: 0.3rem 0.65rem;
+  border-radius: 100px;
+  background: var(--ca-amber);
+  color: #1d1202;
+  font: 800 0.66rem var(--font-mono), monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ca-exclusive-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+.ca-exclusive-note { color: var(--ca-amber-lit) !important; font-weight: 600; }
+.ca-exclusive-note b { color: #fff; }
+.ca-button-exclusive {
+  width: auto;
+  min-height: 46px;
+  padding: 0.7rem 1.1rem;
+  background: linear-gradient(180deg, #ffbb45, #f5a524);
+  color: #1d1202;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 8px 22px -10px rgb(245 165 36 / 0.9);
+}
+.ca-button-exclusive:hover:not(:disabled) { background: linear-gradient(180deg, #ffc766, #f9b035); }
+.ca-code-chip-exclusive { border-color: rgb(245 165 36 / 0.6); max-width: 100%; }
+.ca-code-chip-exclusive > span {
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+.ca-code-chip-exclusive button { background: rgb(245 165 36 / 0.2); color: var(--ca-amber-lit); }
 
 @media (max-width: 980px) {
   .ca-shell { grid-template-columns: 1fr; gap: 2.5rem; padding-bottom: 5rem; overflow: visible; }

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  CLIENTAREA_APP,
   PLAYER_APPS,
   downloaderUrl,
   formatBytes,
@@ -50,5 +51,22 @@ describe("player catalog", () => {
   it("states the size the way a Spanish reader writes it", () => {
     expect(formatBytes(32_010_144)).toBe("30,5 MB");
     expect(formatBytes(86_647_364)).toBe("82,6 MB");
+  });
+});
+
+describe("exclusive active-code app", () => {
+  it("downloads over HTTPS and is not one of the generic players", () => {
+    expect(CLIENTAREA_APP.apkUrl).toBe(
+      "https://contentmasters.app/apps/Client_Area.apk",
+    );
+    expect(PLAYER_APPS.map((app) => app.apkUrl)).not.toContain(
+      CLIENTAREA_APP.apkUrl,
+    );
+  });
+
+  it("types into Downloader as the same address, without the scheme", () => {
+    expect(`https://${CLIENTAREA_APP.downloaderAddress}`).toBe(
+      CLIENTAREA_APP.apkUrl,
+    );
   });
 });
