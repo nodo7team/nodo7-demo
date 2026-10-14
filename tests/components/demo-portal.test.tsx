@@ -548,6 +548,50 @@ describe("NODO7 demo portal", () => {
       expect(screen.getByText(/pase de prueba · usuario y contraseña/i)).toBeVisible();
     });
 
+    /**
+     * The session cookie is shared by both addresses. Without this, a demo
+     * started on one page shows up on the other, and the second pass cannot
+     * even be typed in.
+     */
+    it("does not show a running demo of the other kind, and points to its page", () => {
+      stubFetch(jsonResponse({ state: "none" }));
+      render(
+        <DemoPortal
+          kind="activecode"
+          initialSession={{
+            state: "setup",
+            deadline: new Date(Date.now() + 600_000).toISOString(),
+            remainingSeconds: 600,
+            deliveryOnly: false,
+            credentialType: "line",
+          }}
+        />,
+      );
+
+      expect(screen.queryByLabelText("Nombre")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /ir a la página correcta/i }),
+      ).toHaveAttribute("href", "/demo");
+    });
+
+    it("keeps showing a running demo on the page it belongs to", () => {
+      stubFetch(jsonResponse({ state: "none" }));
+      render(
+        <DemoPortal
+          kind="activecode"
+          initialSession={{
+            state: "setup",
+            deadline: new Date(Date.now() + 600_000).toISOString(),
+            remainingSeconds: 600,
+            deliveryOnly: false,
+            credentialType: "activecode",
+          }}
+        />,
+      );
+
+      expect(screen.getByLabelText("Nombre")).toBeVisible();
+    });
+
     it("links a visitor holding the other kind of pass to the right page", async () => {
       const user = userEvent.setup();
       stubFetch(

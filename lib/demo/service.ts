@@ -221,6 +221,7 @@ export function createDemoService(
           deadline: record.sessionDeadline,
           remainingSeconds: seconds,
           deliveryOnly: process.env.WHATSAPP_HIDE_CREDENTIALS === "true",
+          credentialType: record.credentialType,
         };
       }
 
@@ -233,6 +234,7 @@ export function createDemoService(
             deadline: record.sessionDeadline,
             remainingSeconds: seconds,
             result,
+            credentialType: record.credentialType,
           };
         }
       }

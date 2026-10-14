@@ -343,6 +343,20 @@ describe("demo access service", () => {
     });
   });
 
+  it("says which kind of access a running session belongs to", async () => {
+    for (const type of ["line", "activecode"] as const) {
+      const { code } = await service.createAdminCode(type);
+      const activated = await service.activateAccessCode({
+        code,
+        ip: "203.0.113.4",
+        now: NOW,
+      });
+      await expect(
+        service.getSessionView(activated.token, NOW),
+      ).resolves.toMatchObject({ state: "setup", credentialType: type });
+    }
+  });
+
   it("expires a session from server time", async () => {
     const { code } = await service.createAdminCode("line");
     const activated = await service.activateAccessCode({

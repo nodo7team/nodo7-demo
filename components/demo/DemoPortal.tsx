@@ -15,6 +15,7 @@ import { AppInstall } from "@/components/demo/AppInstall";
 import { DemoCountdown } from "@/components/demo/DemoCountdown";
 import { DemoResult } from "@/components/demo/DemoResult";
 import { DemoSetupForm } from "@/components/demo/DemoSetupForm";
+import { DEMO_PAGE_PATH } from "@/lib/demo/pages";
 import type {
   DemoCredentialType,
   DemoPackageId,
@@ -51,7 +52,9 @@ type PortalState =
   | { kind: "access" }
   | { kind: "setup"; deadline: string; deliveryOnly: boolean }
   | { kind: "result"; deadline: string; result: DemoResultView }
-  | { kind: "expired" };
+  | { kind: "expired" }
+  /** A demo is running, but it belongs to the other page. */
+  | { kind: "elsewhere"; page: string };
 
 /**
  * Installing the player is a screen, not a state: the server knows nothing
@@ -66,9 +69,21 @@ const PANEL_COPY: Record<Screen, { step: string; title: string }> = {
   setup: { step: "PASO 3 DE 4", title: "Arma tu demo" },
   result: { step: "PASO 4 DE 4", title: "Tu acceso está listo" },
   expired: { step: "PASE CERRADO", title: "Sesión finalizada" },
+  elsewhere: { step: "DEMO EN CURSO", title: "Tu demo está en otra página" },
 };
 
-function portalState(session: DemoSessionView): PortalState {
+function portalState(
+  session: DemoSessionView,
+  kind: DemoCredentialType,
+): PortalState {
+  // One cookie serves both pages, so a session can belong to the other one.
+  if (
+    (session.state === "setup" || session.state === "result") &&
+    session.credentialType &&
+    session.credentialType !== kind
+  ) {
+    return { kind: "elsewhere", page: DEMO_PAGE_PATH[session.credentialType] };
+  }
   if (session.state === "setup") {
     return {
       kind: "setup",
@@ -95,7 +110,9 @@ export function DemoPortal({
   initialSession: DemoSessionView;
   kind?: DemoCredentialType;
 }) {
-  const [state, setState] = useState<PortalState>(() => portalState(initialSession));
+  const [state, setState] = useState<PortalState>(() =>
+    portalState(initialSession, kind),
+  );
   const [installed, setInstalled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,10 +122,10 @@ export function DemoPortal({
     let mounted = true;
     void fetch("/api/demo/session", { cache: "no-store" })
       .then((response) => responseJson<DemoSessionView>(response))
-      .then((session) => { if (mounted) setState(portalState(session)); })
+      .then((session) => { if (mounted) setState(portalState(session, kind)); })
       .catch(() => { /* Keep the server-rendered state. */ });
     return () => { mounted = false; };
-  }, []);
+  }, [kind]);
 
   const expire = useCallback(() => setState({ kind: "expired" }), []);
 
@@ -133,7 +150,9 @@ export function DemoPortal({
           return;
         }
       }
-      setState(portalState(await responseJson<DemoSessionView>(response)));
+      setState(
+        portalState(await responseJson<DemoSessionView>(response), kind),
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Código no disponible.");
     } finally {
@@ -253,6 +272,18 @@ export function DemoPortal({
               />
             ) : null}
             {state.kind === "result" ? <DemoResult result={state.result} /> : null}
+            {state.kind === "elsewhere" ? (
+              <div className="ca-expired" aria-live="polite">
+                <p>
+                  Ya tienes una demo en curso en la otra página. Termínala ahí
+                  antes de usar otro pase.
+                </p>
+                <a className="ca-button ca-button-primary" href={state.page}>
+                  <ArrowRight aria-hidden="true" size={17} />
+                  <span>Ir a la página correcta</span>
+                </a>
+              </div>
+            ) : null}
             {state.kind === "expired" ? (
               <div className="ca-expired" aria-live="polite">
                 <strong>00:00</strong>

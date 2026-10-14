@@ -66,10 +66,13 @@ export type DemoSessionView =
       /** True when the credentials will never appear on screen, so a wrong
        * phone number leaves the visitor with nothing. */
       deliveryOnly: boolean;
+      /** Which page this session belongs to; the cookie is shared by both. */
+      credentialType?: DemoCredentialType;
     }
   | {
       state: "result";
       deadline: string;
       remainingSeconds: number;
       result: DemoResultView;
+      credentialType?: DemoCredentialType;
     };
