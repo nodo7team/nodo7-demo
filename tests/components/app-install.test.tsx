@@ -180,15 +180,13 @@ describe("app install step on the active-code page", () => {
     expect(screen.queryByText("3162777")).not.toBeInTheDocument();
   });
 
-  it("gives Downloader the address instead of a code on a television", async () => {
+  it("gives Downloader the code of the exclusive app on a television", async () => {
     const user = userEvent.setup();
     render(<AppInstall kind="activecode" onContinue={() => {}} />);
 
     await user.click(screen.getByRole("tab", { name: /tv/i }));
 
-    expect(
-      screen.getByText("contentmasters.app/apps/Client_Area.apk"),
-    ).toBeVisible();
+    expect(screen.getByText("6824165")).toBeVisible();
   });
 
   it("has no Roku tab, because Roku is not set up with an active code", () => {

@@ -197,19 +197,19 @@ function TvSteps({ kind }: { kind: DemoCredentialType }) {
       <li>
         {kind === "activecode" ? (
           <>
-            <h3>Escribí la dirección en Downloader</h3>
+            <h3>Escribí el código en Downloader</h3>
             <p>
-              Abrilo, escribí esta dirección en el casillero de arriba y
-              presioná <b>Ir</b>.
+              Abrilo, escribí el código en el casillero de arriba y presioná{" "}
+              <b>Ir</b>. No hace falta ninguna dirección web.
             </p>
             <ExclusiveApp>
               <div className="ca-code-chip ca-code-chip-exclusive">
-                <span>{CLIENTAREA_APP.downloaderAddress}</span>
+                <span>{CLIENTAREA_APP.downloaderCode}</span>
                 <button
                   type="button"
-                  aria-label={`Copiar la dirección de ${CLIENTAREA_APP.name}`}
+                  aria-label={`Copiar el código de ${CLIENTAREA_APP.name}`}
                   onClick={() =>
-                    void copy("clientarea", CLIENTAREA_APP.downloaderAddress)
+                    void copy("clientarea", CLIENTAREA_APP.downloaderCode)
                   }
                 >
                   {copied === "clientarea" ? (

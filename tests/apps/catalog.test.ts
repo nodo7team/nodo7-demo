@@ -64,9 +64,10 @@ describe("exclusive active-code app", () => {
     );
   });
 
-  it("types into Downloader as the same address, without the scheme", () => {
-    expect(`https://${CLIENTAREA_APP.downloaderAddress}`).toBe(
-      CLIENTAREA_APP.apkUrl,
+  it("uses a Downloader code the remote can type, distinct from the players'", () => {
+    expect(CLIENTAREA_APP.downloaderCode).toMatch(/^\d{7}$/);
+    expect(PLAYER_APPS.map((app) => app.downloaderCode)).not.toContain(
+      CLIENTAREA_APP.downloaderCode,
     );
   });
 });

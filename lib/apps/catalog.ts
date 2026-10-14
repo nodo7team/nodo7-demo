@@ -51,8 +51,7 @@ export const PLAYER_APPS: readonly PlayerApp[] = [
 export const CLIENTAREA_APP = {
   name: "ClientArea",
   apkUrl: "https://contentmasters.app/apps/Client_Area.apk",
-  /** What Downloader takes in place of a code: this one has no short code. */
-  downloaderAddress: "contentmasters.app/apps/Client_Area.apk",
+  downloaderCode: "6824165",
   bytes: 51_402_989,
 } as const;
 
