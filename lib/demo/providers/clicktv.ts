@@ -131,7 +131,7 @@ class ClickTvDemoProvider implements DemoProvider {
       // trial=1 the panel stamps exp_date at creation, the demo is already
       // spent, and the app finds nothing left to activate. Verified against a
       // code created by hand in the panel, whose exp_date is null.
-      trial: activation ? "0" : "1",
+      trial: "1",
       is_isplock: "0",
       reseller_notes: input.name,
     });
