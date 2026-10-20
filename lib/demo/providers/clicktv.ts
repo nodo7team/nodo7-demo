@@ -76,9 +76,7 @@ function deterministicCredentials(input: DemoProviderInput) {
  * mean cycling through a keyboard.
  *
  * Derived from the idempotency key so a retry submits the same code and the
- * panel rejects the duplicate instead of leaving a second demo behind. The
- * panel never echoes a code back, so whatever we send here is the only code
- * that will ever exist for this demo.
+ * panel rejects the duplicate instead of leaving a second demo behind.
  */
 function deterministicActivationCode(idempotencyKey: string): string {
   const digest = hashSecret(`activecode:${idempotencyKey}`);
@@ -100,9 +98,6 @@ function rejectionFor(
       : new DemoProviderError("PROVIDER_REJECTED", "explicit");
   }
 
-  // The panel issues its own activation code, so nothing on our side identifies
-  // an earlier attempt. Any rejection outside the configuration set may hide a
-  // code that was already created, and a retry would create a second one.
   return CONFIGURATION_REJECTIONS.has(value)
     ? new DemoProviderError("PROVIDER_REJECTED", "explicit")
     : new DemoProviderError("PROVIDER_CODE_UNCERTAIN", "ambiguous");
@@ -126,15 +121,16 @@ class ClickTvDemoProvider implements DemoProvider {
       api_key: this.options.apiKey,
       action: activation ? "create_activecode" : "create_line",
       package: String(input.packageId),
-      // A line starts its trial the moment it exists, so trial=1 is right for
-      // it. An activation code must start when the visitor redeems it: with
-      // trial=1 the panel stamps exp_date at creation, the demo is already
-      // spent, and the app finds nothing left to activate. Verified against a
-      // code created by hand in the panel, whose exp_date is null.
       trial: "1",
       is_isplock: "0",
       reseller_notes: input.name,
     });
+
+    if (activation) {
+      // 1 = el tiempo de suscripción arranca en el primer uso en la app, no al crearse
+      form.set("on_watch", "1");
+    }
+
     if (credentials) {
       form.set("username", credentials.username);
       form.set("password", credentials.password);
@@ -181,8 +177,6 @@ class ClickTvDemoProvider implements DemoProvider {
 
     const data = payload.data;
     if (activationCode) {
-      // create_activecode answers without a code field, so the one we
-      // submitted is the demo's only activation code.
       const echoed = typeof data.code === "string" ? data.code.trim() : "";
       return {
         kind: "activecode",
